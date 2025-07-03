@@ -1,5 +1,5 @@
 {
-  "name": "create-my-saas",
+  "name": "create-light-stack",
   "version": "1.0.0",
   "description": "A CLI tool to scaffold modern SaaS applications with best practices",
   "main": "dist/index.js",
@@ -14,7 +14,7 @@
     "prepublishOnly": "npm run build"
   },
   "bin": {
-    "create-my-saas": "dist/cli.js"
+    "create-light-stack": "dist/cli.js"
   },
   "files": [
     "dist",
