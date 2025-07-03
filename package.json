@@ -41,7 +41,7 @@
     "boilerplate",
     "starter"
   ],
-  "author": "Dawar <https://dawar.pro>",
+  "author": "lightbearco",
   "license": "ISC",
   "dependencies": {
     "boxen": "^7.1.1",
@@ -68,12 +68,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/dawar-pro/create-my-saas.git"
+    "url": "git+https://github.com/lightbearco/create-light-stack.git"
   },
   "bugs": {
-    "url": "https://github.com/dawar-pro/create-my-saas/issues"
+    "url": "https://github.com/lightbearco/create-light-stack/issues"
   },
-  "homepage": "https://github.com/dawar-pro/create-my-saas#readme",
+  "homepage": "https://github.com/lightbearco/create-light-stack#readme",
   "publishConfig": {
     "access": "public"
   }

@@ -21,17 +21,18 @@ export function displayWelcomeMessage(): void {
                                   \`--'   \`--'
     `;
 	const titleArt = `
-    ╔═╗┬─┐┌─┐┌─┐┌┬┐┌─┐  ╔╦╗┬ ┬  ╔═╗┌─┐┌─┐╔═╗
-    ║  ├┬┘├┤ ├─┤ │ ├┤   ║║║└┬┘  ╚═╗├─┤├─┤╚═╗
-    ╚═╝┴└─└─┘┴ ┴ ┴ └─┘  ╩ ╩ ┴   ╚═╝┴ ┴┴ ┴╚═╝
+    ╔═╗┬─┐┌─┐┌─┐┌┬┐┌─┐  ╦  ┬┌─┐┬ ┬┌┬┐  ╔═╗┌┬┐┌─┐┌─┐┬┌─
+    ║  ├┬┘├┤ ├─┤ │ ├┤   ║  ││ ┬├─┤ │   ╚═╗ │ ├─┤│  ├┴┐
+    ╚═╝┴└─└─┘┴ ┴ ┴ └─┘  ╩═╝┴└─┘┴ ┴ ┴   ╚═╝ ┴ ┴ ┴└─┘┴ ┴
     
     🚀 A powerful CLI tool to scaffold modern SaaS applications
-       with best practices, monorepo setup, and popular tech stack
+       with best practices and popular technology choices
     
-    ✨ Features: Next.js/Vite • Turborepo/Nx • TypeScript • tRPC
-       shadcn/ui • Neon/Supabase • Auth • Stripe • Docker & more
+    ✨ Features: Turborepo/Nx/NPM • Next.js/Vite • shadcn/ui
+       TypeScript • tRPC • Neon/Supabase • Auth • Stripe
+       Docker • CI/CD • Testing • Storybook • PWA & more
     
-                                        made with ♥ by lightbear
+                                       💜 made with love by Lightbear
     `;
 
 	console.log(gradient("cyan", "magenta")(asciiCat));

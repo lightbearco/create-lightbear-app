@@ -90,9 +90,9 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## Author
 
-💜 **Made with love by Dawar**
+💜 **Made with love by Lightbear**
 
-🌐 Website: [dawar.pro](https://dawar.pro)
+🌐 Websites: [dawar.pro](https://dawar.pro)
 
 ⭐ If you found this tool helpful, please consider starring the repository!
 
