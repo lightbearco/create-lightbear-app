@@ -82,7 +82,9 @@ export class BiomeConfigGenerator {
 			case "react-vanilla":
 				return this.customizeForVite(baseConfig);
 			case "remix":
-				return BiomeConfigGenerator.customizeForRemix(baseConfig);
+				return this.customizeForRemix(baseConfig);
+			case "astro":
+				return this.customizeForAstro(baseConfig);
 			default:
 				return baseConfig;
 		}
@@ -167,6 +169,51 @@ export class BiomeConfigGenerator {
 					"public/build/**",
 				],
 			},
+		};
+	}
+
+	private static customizeForAstro(config: BiomeConfig): BiomeConfig {
+		return {
+			...config,
+			files: {
+				...config.files,
+				include: [
+					...config.files.include,
+					"src/**/*.{js,jsx,ts,tsx,astro}",
+					"src/components/**/*.{js,jsx,ts,tsx,astro}",
+					"src/layouts/**/*.{js,jsx,ts,tsx,astro}",
+					"src/pages/**/*.{js,jsx,ts,tsx,astro}",
+				],
+				ignore: [
+					...config.files.ignore,
+					"astro.config.{js,ts,mjs}",
+					"tailwind.config.{js,ts,mjs}",
+					".astro/**",
+					"dist/**",
+				],
+			},
+			overrides: [
+				{
+					include: ["**/*.test.{js,jsx,ts,tsx}", "**/*.spec.{js,jsx,ts,tsx}"],
+					linter: {
+						rules: {
+							suspicious: {
+								noConsoleLog: "off",
+							},
+						},
+					},
+				},
+				{
+					include: ["astro.config.{js,ts,mjs}", "tailwind.config.{js,ts,mjs}"],
+					linter: {
+						rules: {
+							style: {
+								useImportType: "off",
+							},
+						},
+					},
+				},
+			],
 		};
 	}
 

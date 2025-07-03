@@ -8,6 +8,7 @@ import { FileSystemService } from "../core/file-system.js";
 import { PackageManagerService } from "../core/package-manager.js";
 import { NextJsSetupService } from "../framework/nextjs-setup.js";
 import { ViteSetupService } from "../framework/vite-setup.js";
+import { AstroSetupService } from "../framework/astro-setup.js";
 import { UILibrarySetupService } from "./ui-library.js";
 
 export class FrontendSetupService {
@@ -15,6 +16,7 @@ export class FrontendSetupService {
 	private packageManager: PackageManagerService;
 	private nextJsService: NextJsSetupService;
 	private viteService: ViteSetupService;
+	private astroService: AstroSetupService;
 	private uiLibraryService: UILibrarySetupService;
 
 	constructor() {
@@ -25,6 +27,10 @@ export class FrontendSetupService {
 			this.packageManager,
 		);
 		this.viteService = new ViteSetupService(
+			this.fileSystem,
+			this.packageManager,
+		);
+		this.astroService = new AstroSetupService(
 			this.fileSystem,
 			this.packageManager,
 		);
@@ -93,6 +99,28 @@ export class FrontendSetupService {
 	}
 
 	/**
+	 * Setup Astro application with proper configuration
+	 */
+	async setupAstro(
+		projectPath: string,
+		answers: ProjectAnswers,
+	): Promise<SetupResult> {
+		try {
+			const context: ExecutionContext = {
+				projectPath,
+				appPath: this.fileSystem.resolveAppPath(projectPath),
+				answers,
+			};
+
+			return await this.astroService.setup(context);
+		} catch (error) {
+			const message = `Failed to setup Astro: ${error instanceof Error ? error.message : String(error)}`;
+			logger.error(message);
+			return { success: false, message };
+		}
+	}
+
+	/**
 	 * Setup frontend framework based on user's choice
 	 */
 	async setupFramework(
@@ -106,6 +134,8 @@ export class FrontendSetupService {
 				return await this.setupNextJs(projectPath, answers, false);
 			case "vite":
 				return await this.setupVite(projectPath, answers);
+			case "astro":
+				return await this.setupAstro(projectPath, answers);
 			case "none":
 				logger.info("Skipping frontend setup as requested");
 				return { success: true, message: "Frontend setup skipped" };
@@ -152,9 +182,26 @@ export async function setupVite(
 	}
 }
 
+export async function setupAstro(
+	projectPath: string,
+	answers: ProjectAnswers,
+): Promise<void> {
+	const service = new FrontendSetupService();
+	const result = await service.setupAstro(projectPath, answers);
+
+	if (!result.success) {
+		throw new Error(result.message);
+	}
+
+	if (result.warnings) {
+		result.warnings.forEach((warning) => logger.warn(warning));
+	}
+}
+
 // Export services for advanced usage
 export { NextJsSetupService } from "../framework/nextjs-setup.js";
 export { ViteSetupService } from "../framework/vite-setup.js";
+export { AstroSetupService } from "../framework/astro-setup.js";
 export { UILibrarySetupService } from "./ui-library.js";
 
 // Export core services

@@ -7,6 +7,7 @@ export type Frontend =
 	| "vite"
 	| "react-vanilla"
 	| "remix"
+	| "astro"
 	| "none";
 export type BackendAPI = "trpc" | "nestjs" | "graphql-apollo" | "none";
 export type UIComponents = "shadcn" | "tailwind-only" | "none";

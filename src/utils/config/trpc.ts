@@ -9,6 +9,8 @@ export class TRPCConfigGenerator {
 				return this.generateNextJsConfig();
 			case "vite":
 				return this.generateViteConfig();
+			case "astro":
+				return this.generateAstroConfig();
 			default:
 				return this.generateBaseConfig();
 		}
@@ -65,6 +67,24 @@ export const publicProcedure = t.procedure;`;
 		return this.generateBaseConfig();
 	}
 
+	private static generateAstroConfig(): string {
+		return `import { initTRPC } from '@trpc/server';
+import superjson from 'superjson';
+
+const t = initTRPC.create({
+  transformer: superjson,
+});
+
+export const router = t.router;
+export const publicProcedure = t.procedure;
+
+export const appRouter = router({
+  // Add your procedures here
+});
+
+export type AppRouter = typeof appRouter;`;
+	}
+
 	static generateRootRouter(framework: Frontend): string {
 		switch (framework) {
 			case "nextjs-app":
@@ -76,6 +96,14 @@ export const appRouter = createTRPCRouter({
 
 export type AppRouter = typeof appRouter;`;
 			case "vite":
+				return `import { router } from './trpc';
+
+export const appRouter = router({
+  // Add your routers here
+});
+
+export type AppRouter = typeof appRouter;`;
+			case "astro":
 				return `import { router } from './trpc';
 
 export const appRouter = router({
@@ -96,6 +124,11 @@ export type AppRouter = typeof appRouter;`;
 					rootRouter: "src/server/api/root.ts",
 				};
 			case "vite":
+				return {
+					trpcConfig: "src/server/trpc.ts",
+					rootRouter: "src/server/root.ts",
+				};
+			case "astro":
 				return {
 					trpcConfig: "src/server/trpc.ts",
 					rootRouter: "src/server/root.ts",
@@ -151,6 +184,19 @@ export const api = createTRPCNext<AppRouter>({
 import { type AppRouter } from './server/root';
 
 export const api = createTRPCReact<AppRouter>();`;
+			case "astro":
+				return `import { createTRPCProxyClient, httpBatchLink } from '@trpc/client';
+import { type AppRouter } from './server/root';
+import superjson from 'superjson';
+
+export const api = createTRPCProxyClient<AppRouter>({
+  transformer: superjson,
+  links: [
+    httpBatchLink({
+      url: '/api/trpc',
+    }),
+  ],
+});`;
 			default:
 				return "";
 		}

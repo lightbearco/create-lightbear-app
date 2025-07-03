@@ -51,6 +51,7 @@ bunx create-light-stack@latest
 - **▲ Next.js App Router** - The future of React with RSC
 - **📄 Next.js Pages Router** - Battle-tested and reliable
 - **⚡ Vite + React** - Lightning-fast development
+- **🚀 Astro** - Content-focused with islands architecture
 - **🔜 React Vanilla** - Coming soon
 - **🔜 Remix** - Coming soon
 
@@ -132,7 +133,7 @@ Our CLI guides you through every decision with intelligent defaults:
     🚀 A powerful CLI tool to scaffold modern SaaS applications
        with best practices and popular technology choices
     
-    ✨ Features: Turborepo/Nx/NPM • Next.js/Vite • shadcn/ui
+    ✨ Features: Turborepo/Nx/NPM • Next.js/Vite/Astro • shadcn/ui
        TypeScript • tRPC • Neon/Supabase • Auth • Stripe
        Docker • CI/CD • Testing • Storybook • PWA & more
     
@@ -141,7 +142,7 @@ Our CLI guides you through every decision with intelligent defaults:
 ? What's your project name? › my-awesome-saas
 ? 📦 Choose your package manager: › 🥟 bun (blazing fast)
 ? 🏗️  Choose your monorepo tool: › 🚀 Turborepo (recommended - fast builds & caching)
-? ⚛️  Choose your frontend framework: › ▲ Next.js (App Router)
+? ⚛️  Choose your frontend framework: › ▲ Next.js (App Router) / 📄 Next.js (Pages) / ⚡ Vite + React / 🚀 Astro
 ? 🔌 Choose your backend / API layer: › 🔗 tRPC (type-safe APIs)
 ? 🧩 Choose your UI components: › 🎨 shadcn/ui (beautiful, accessible components)
 ? 🎨 Choose a base color for shadcn/ui: › Slate (Default)
@@ -163,7 +164,7 @@ Our CLI guides you through every decision with intelligent defaults:
 ```
 my-awesome-saas/
 ├── 📦 apps/
-│   ├── 🌐 web/                 # Next.js frontend
+│   ├── 🌐 web/                 # Next.js / Astro / Vite frontend
 │   ├── 📱 mobile/              # React Native (optional)
 │   └── 🔧 admin/               # Admin dashboard
 ├── 📚 packages/
@@ -201,10 +202,10 @@ LIVEBLOCKS_SECRET_KEY="sk_..."
 NEXT_PUBLIC_LIVEBLOCKS_PUBLIC_KEY="pk_..."
 ```
 
-
 ## 🌟 Key Features Included
 
 - ✅ **TypeScript First** - Full type safety across the stack
+- ✅ **Multiple Frontend Options** - Next.js, Vite, or Astro for different use cases
 - ✅ **Responsive Design** - Mobile-first UI components  
 - ✅ **Dark Mode** - Built-in theme switching
 - ✅ **Internationalization** - Multi-language support ready
@@ -231,7 +232,6 @@ bun dev
 # Run tests
 bun test
 ```
-
 
 ## 📚 Learn More
 
