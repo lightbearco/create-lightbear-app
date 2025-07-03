@@ -1,0 +1,80 @@
+{
+  "name": "create-my-saas",
+  "version": "1.0.0",
+  "description": "A CLI tool to scaffold modern SaaS applications with best practices",
+  "main": "dist/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "tsx setup-script.ts",
+    "dev": "tsx setup-script.ts",
+    "build": "tsc",
+    "prepare": "npm run build",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "type-check": "tsc --noEmit",
+    "prepublishOnly": "npm run build"
+  },
+  "bin": {
+    "create-my-saas": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "package.json"
+  ],
+  "keywords": [
+    "saas",
+    "cli",
+    "scaffold",
+    "nextjs",
+    "vite",
+    "turborepo",
+    "nx",
+    "trpc",
+    "shadcn",
+    "supabase",
+    "neon",
+    "monorepo",
+    "typescript",
+    "react",
+    "template",
+    "boilerplate",
+    "starter"
+  ],
+  "author": "Dawar <https://dawar.pro>",
+  "license": "ISC",
+  "dependencies": {
+    "boxen": "^7.1.1",
+    "chalk": "^5.3.0",
+    "commander": "^12.0.0",
+    "execa": "^8.0.1",
+    "fs-extra": "^11.2.0",
+    "gradient-string": "^2.0.2",
+    "inquirer": "^9.2.15",
+    "ora": "^8.0.1"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.0.6",
+    "@types/fs-extra": "^11.0.4",
+    "@types/gradient-string": "^1.1.6",
+    "@types/inquirer": "^9.0.8",
+    "@types/node": "^20.19.2",
+    "@types/ora": "^3.2.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.8.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dawar-pro/create-my-saas.git"
+  },
+  "bugs": {
+    "url": "https://github.com/dawar-pro/create-my-saas/issues"
+  },
+  "homepage": "https://github.com/dawar-pro/create-my-saas#readme",
+  "publishConfig": {
+    "access": "public"
+  }
+}

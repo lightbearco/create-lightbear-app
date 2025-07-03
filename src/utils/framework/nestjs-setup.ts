@@ -1,0 +1,859 @@
+import { execa } from "execa";
+import path from "path";
+import type {
+	ProjectAnswers,
+	SetupResult,
+	ExecutionContext,
+} from "../types/index.js";
+import { logger } from "../core/logger.js";
+import { FileSystemService } from "../core/file-system.js";
+import { PackageManagerService } from "../core/package-manager.js";
+
+export class NestJsSetupService {
+	constructor(
+		private fileSystem: FileSystemService,
+		private packageManager: PackageManagerService,
+	) {}
+
+	async setup(context: ExecutionContext): Promise<SetupResult> {
+		try {
+			logger.normal("Setting up NestJS backend");
+
+			if (context.answers.monorepoTool === "nx") {
+				return await this.setupWithNx(context);
+			}
+
+			return await this.setupStandard(context);
+		} catch (error) {
+			const message = `Failed to setup NestJS: ${error instanceof Error ? error.message : String(error)}`;
+			logger.error(message);
+			return { success: false, message };
+		}
+	}
+
+	private async setupStandard(context: ExecutionContext): Promise<SetupResult> {
+		const { projectPath, appPath, answers } = context;
+
+		// Create NestJS application
+		await this.createNestApp(projectPath, answers);
+
+		// Setup database integration if needed
+		if (answers.ormDatabase !== "none") {
+			await this.setupDatabase(appPath, answers);
+		}
+
+		// Setup authentication if needed
+		if (answers.authentication !== "none") {
+			await this.setupAuthentication(appPath, answers);
+		}
+
+		return {
+			success: true,
+			message: "NestJS backend setup completed successfully!",
+		};
+	}
+
+	private async setupWithNx(context: ExecutionContext): Promise<SetupResult> {
+		const { projectPath, answers } = context;
+
+		logger.normal("Creating NestJS backend with Nx");
+
+		const nxArgs = [
+			"nx",
+			"g",
+			"@nx/nest:app",
+			"api",
+			"--no-interactive",
+			"--dry-run=false",
+		];
+
+		const nxProcess = execa("npx", nxArgs, {
+			cwd: projectPath,
+			stdio: ["pipe", "pipe", "pipe"],
+			timeout: 300000,
+			env: {
+				...process.env,
+				CI: "true",
+				FORCE_COLOR: "0",
+				NX_INTERACTIVE: "false",
+			},
+		});
+
+		this.attachProcessLogging(nxProcess);
+		await nxProcess;
+
+		const appPath = this.fileSystem.resolveBackendPath(projectPath);
+
+		// Create NestJS specific .gitignore
+		await this.createNestJsGitignore(appPath);
+
+		// Setup database integration if needed
+		if (answers.ormDatabase !== "none") {
+			await this.setupDatabase(appPath, answers);
+		}
+
+		// Setup authentication if needed
+		if (answers.authentication !== "none") {
+			await this.setupAuthentication(appPath, answers);
+		}
+
+		return {
+			success: true,
+			message: "NestJS with Nx setup completed successfully!",
+		};
+	}
+
+	private async createNestApp(
+		projectPath: string,
+		answers: ProjectAnswers,
+	): Promise<void> {
+		logger.normal("Creating NestJS application");
+
+		const packageManagerFlag = this.getPackageManagerFlag(
+			answers.packageManager,
+		);
+
+		const createNestArgs = [
+			"@nestjs/cli@latest",
+			"new",
+			"api",
+			packageManagerFlag,
+			"--skip-git",
+			"--skip-install",
+		];
+
+		const createNestProcess = execa("npx", createNestArgs, {
+			cwd: path.join(projectPath, "apps"),
+			stdio: ["pipe", "pipe", "pipe"],
+			timeout: 300000,
+			env: {
+				...process.env,
+				CI: "true",
+				FORCE_COLOR: "0",
+			},
+		});
+
+		this.attachProcessLogging(createNestProcess);
+		await createNestProcess;
+
+		// Update the generated files
+		const appPath = this.fileSystem.resolveBackendPath(projectPath);
+		await this.customizeNestApp(appPath, answers);
+
+		// Create NestJS specific .gitignore
+		await this.createNestJsGitignore(appPath);
+	}
+
+	/**
+	 * Create NestJS specific .gitignore file
+	 */
+	private async createNestJsGitignore(appPath: string): Promise<void> {
+		const nestJsGitignore = `# NestJS specific
+dist/
+
+# Debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Local env files (app-specific)
+.env*.local
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+coverage/
+.nyc_output
+
+# Cache
+.eslintcache
+
+# Typescript
+*.tsbuildinfo
+
+# Logs
+logs/
+*.log
+
+# Database
+*.db
+*.sqlite
+
+# Prisma
+prisma/migrations/
+!prisma/migrations/.gitkeep
+
+# Uploads
+uploads/
+`;
+
+		await this.fileSystem.writeFile(
+			path.join(appPath, ".gitignore"),
+			nestJsGitignore,
+		);
+
+		logger.normal("Created NestJS specific .gitignore");
+	}
+
+	private async customizeNestApp(
+		appPath: string,
+		answers: ProjectAnswers,
+	): Promise<void> {
+		logger.normal("Customizing NestJS application");
+
+		// Update main.ts with CORS and environment configuration
+		const mainContent = this.generateMainFile(answers);
+		await this.fileSystem.writeFile(
+			path.join(appPath, "src/main.ts"),
+			mainContent,
+		);
+
+		// Create health check controller
+		const healthContent = this.generateHealthController();
+		await this.fileSystem.writeFile(
+			path.join(appPath, "src/health/health.controller.ts"),
+			healthContent,
+		);
+
+		// Update app.module.ts to include health check
+		await this.updateAppModule(appPath, answers);
+
+		// Create environment configuration
+		const envContent = this.generateEnvFile(answers);
+		await this.fileSystem.writeFile(
+			path.join(appPath, ".env.example"),
+			envContent,
+		);
+
+		// Update package.json scripts
+		await this.updatePackageJson(appPath, answers);
+	}
+
+	private generateMainFile(answers: ProjectAnswers): string {
+		return `import { NestFactory } from '@nestjs/core';
+import { ValidationPipe } from '@nestjs/common';
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import { AppModule } from './app.module';
+
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule);
+
+  // Global validation pipe
+  app.useGlobalPipes(new ValidationPipe({
+    whitelist: true,
+    transform: true,
+    forbidNonWhitelisted: true,
+  }));
+
+  // CORS configuration
+  app.enableCors({
+    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    credentials: true,
+  });
+
+  // Global prefix
+  app.setGlobalPrefix('api');
+
+  // Swagger documentation
+  const config = new DocumentBuilder()
+    .setTitle('${answers.projectName} API')
+    .setDescription('API documentation for ${answers.projectName}')
+    .setVersion('1.0')
+    .addBearerAuth()
+    .build();
+  
+  const document = SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup('api/docs', app, document);
+
+  const port = process.env.PORT || 3001;
+  await app.listen(port);
+  
+  console.log(\`🚀 NestJS server running on http://localhost:\${port}\`);
+  console.log(\`📚 API documentation available at http://localhost:\${port}/api/docs\`);
+}
+
+bootstrap();
+`;
+	}
+
+	private generateHealthController(): string {
+		return `import { Controller, Get } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+
+@ApiTags('health')
+@Controller('health')
+export class HealthController {
+  @Get()
+  @ApiOperation({ summary: 'Health check endpoint' })
+  @ApiResponse({ status: 200, description: 'Service is healthy' })
+  check() {
+    return {
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+    };
+  }
+}
+`;
+	}
+
+	private async updateAppModule(
+		appPath: string,
+		answers: ProjectAnswers,
+	): Promise<void> {
+		const appModuleContent = `import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
+import { HealthController } from './health/health.controller';
+
+@Module({
+  imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+    }),
+    // Add your feature modules here
+  ],
+  controllers: [AppController, HealthController],
+  providers: [AppService],
+})
+export class AppModule {}
+`;
+
+		await this.fileSystem.writeFile(
+			path.join(appPath, "src/app.module.ts"),
+			appModuleContent,
+		);
+	}
+
+	private async updatePackageJson(
+		appPath: string,
+		answers: ProjectAnswers,
+	): Promise<void> {
+		// Add additional dependencies
+		const additionalDeps = {
+			"@nestjs/config": "^3.1.1",
+			"@nestjs/swagger": "^7.1.17",
+			"class-validator": "^0.14.0",
+			"class-transformer": "^0.5.1",
+		};
+
+		await this.fileSystem.updatePackageJson(
+			path.join(appPath, "package.json"),
+			{
+				dependencies: additionalDeps,
+			},
+		);
+	}
+
+	private generateEnvFile(answers: ProjectAnswers): string {
+		let envContent = `# Server Configuration
+PORT=3001
+NODE_ENV=development
+
+# Frontend URL for CORS
+FRONTEND_URL=http://localhost:3000
+
+# JWT Secret (generate a secure random string)
+JWT_SECRET=your-super-secret-jwt-key
+
+`;
+
+		if (answers.ormDatabase !== "none") {
+			if (answers.databaseProvider === "neon") {
+				envContent += `# Neon Database
+DATABASE_URL="postgresql://username:password@host/database"
+
+`;
+			} else if (answers.databaseProvider === "supabase") {
+				envContent += `# Supabase Database
+DATABASE_URL="postgresql://postgres:password@db.supabase.co:5432/postgres"
+SUPABASE_URL="https://your-project.supabase.co"
+SUPABASE_ANON_KEY="your-anon-key"
+
+`;
+			}
+		}
+
+		return envContent;
+	}
+
+	private async setupDatabase(
+		appPath: string,
+		answers: ProjectAnswers,
+	): Promise<void> {
+		logger.normal(`Setting up ${answers.ormDatabase} with NestJS`);
+
+		if (answers.ormDatabase === "prisma") {
+			await this.setupPrisma(appPath, answers);
+		} else if (answers.ormDatabase === "drizzle") {
+			await this.setupDrizzle(appPath, answers);
+		} else if (answers.ormDatabase === "kysely") {
+			await this.setupKysely(appPath, answers);
+		}
+	}
+
+	private async setupPrisma(
+		appPath: string,
+		answers: ProjectAnswers,
+	): Promise<void> {
+		// Add Prisma dependencies
+		await this.fileSystem.updatePackageJson(
+			path.join(appPath, "package.json"),
+			{
+				dependencies: {
+					"@prisma/client": "^5.7.0",
+				},
+				devDependencies: {
+					prisma: "^5.7.0",
+				},
+			},
+		);
+
+		// Initialize Prisma
+		try {
+			const provider =
+				answers.databaseProvider === "planetscale" ? "mysql" : "postgresql";
+			await execa(
+				"npx",
+				["prisma", "init", "--datasource-provider", provider],
+				{
+					cwd: appPath,
+					stdio: "pipe",
+				},
+			);
+		} catch (error) {
+			logger.warn("Prisma init failed, creating basic schema");
+		}
+
+		// Create Prisma service
+		const prismaService = `import { Injectable, OnModuleInit } from '@nestjs/common';
+import { PrismaClient } from '@prisma/client';
+
+@Injectable()
+export class PrismaService extends PrismaClient implements OnModuleInit {
+  async onModuleInit() {
+    await this.$connect();
+  }
+
+  async onModuleDestroy() {
+    await this.$disconnect();
+  }
+}
+`;
+
+		await this.fileSystem.ensureDirectory(path.join(appPath, "src/prisma"));
+		await this.fileSystem.writeFile(
+			path.join(appPath, "src/prisma/prisma.service.ts"),
+			prismaService,
+		);
+	}
+
+	private async setupDrizzle(
+		appPath: string,
+		answers: ProjectAnswers,
+	): Promise<void> {
+		// Add Drizzle dependencies
+		const deps =
+			answers.databaseProvider === "planetscale"
+				? {
+						"drizzle-orm": "^0.29.0",
+						mysql2: "^3.6.5",
+					}
+				: {
+						"drizzle-orm": "^0.29.0",
+						postgres: "^3.4.3",
+					};
+
+		await this.fileSystem.updatePackageJson(
+			path.join(appPath, "package.json"),
+			{
+				dependencies: deps,
+				devDependencies: {
+					"drizzle-kit": "^0.20.6",
+				},
+			},
+		);
+
+		// Create database directory and schema
+		await this.fileSystem.ensureDirectory(path.join(appPath, "src/db"));
+
+		const schemaContent =
+			answers.databaseProvider === "planetscale"
+				? `import { mysqlTable, text, timestamp, int } from "drizzle-orm/mysql-core";
+
+export const users = mysqlTable("users", {
+  id: int("id").primaryKey().autoincrement(),
+  email: text("email").notNull().unique(),
+  name: text("name"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+`
+				: `import { pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+
+export const users = pgTable("users", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  email: text("email").notNull().unique(),
+  name: text("name"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+`;
+
+		await this.fileSystem.writeFile(
+			path.join(appPath, "src/db/schema.ts"),
+			schemaContent,
+		);
+
+		// Create Drizzle service
+		const drizzleService =
+			answers.databaseProvider === "planetscale"
+				? `import { Injectable } from '@nestjs/common';
+import { drizzle } from "drizzle-orm/mysql2";
+import mysql from "mysql2/promise";
+
+@Injectable()
+export class DrizzleService {
+  private connection = mysql.createConnection({
+    uri: process.env.DATABASE_URL!,
+  });
+
+  public db = drizzle(this.connection);
+}
+`
+				: `import { Injectable } from '@nestjs/common';
+import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
+
+@Injectable()
+export class DrizzleService {
+  private client = postgres(process.env.DATABASE_URL!);
+  public db = drizzle(this.client);
+}
+`;
+
+		await this.fileSystem.writeFile(
+			path.join(appPath, "src/db/drizzle.service.ts"),
+			drizzleService,
+		);
+
+		// Create Drizzle config
+		const drizzleConfig =
+			answers.databaseProvider === "planetscale"
+				? `import type { Config } from "drizzle-kit";
+
+export default {
+  schema: "./src/db/schema.ts",
+  out: "./src/db/migrations",
+  driver: "mysql2",
+  dbCredentials: {
+    connectionString: process.env.DATABASE_URL!,
+  },
+} satisfies Config;
+`
+				: `import type { Config } from "drizzle-kit";
+
+export default {
+  schema: "./src/db/schema.ts",
+  out: "./src/db/migrations",
+  driver: "pg",
+  dbCredentials: {
+    connectionString: process.env.DATABASE_URL!,
+  },
+} satisfies Config;
+`;
+
+		await this.fileSystem.writeFile(
+			path.join(appPath, "drizzle.config.ts"),
+			drizzleConfig,
+		);
+	}
+
+	private async setupKysely(
+		appPath: string,
+		answers: ProjectAnswers,
+	): Promise<void> {
+		// Add Kysely dependencies
+		const isMySQL = answers.databaseProvider === "planetscale";
+		const deps = isMySQL
+			? {
+					kysely: "^0.27.0",
+					mysql2: "^3.6.5",
+				}
+			: {
+					kysely: "^0.27.0",
+					pg: "^8.11.3",
+				};
+
+		await this.fileSystem.updatePackageJson(
+			path.join(appPath, "package.json"),
+			{
+				dependencies: deps,
+				devDependencies: {
+					"@types/pg": "^8.10.9",
+				},
+			},
+		);
+
+		// Create database directory
+		await this.fileSystem.ensureDirectory(path.join(appPath, "src/db"));
+
+		// Create database types
+		const databaseTypes = isMySQL
+			? `export interface Database {
+  users: {
+    id: number;
+    email: string;
+    name: string | null;
+    created_at: Date;
+    updated_at: Date;
+  };
+}
+
+export type DB = Database;
+`
+			: `export interface Database {
+  users: {
+    id: string;
+    email: string;
+    name: string | null;
+    created_at: Date;
+    updated_at: Date;
+  };
+}
+
+export type DB = Database;
+`;
+
+		await this.fileSystem.writeFile(
+			path.join(appPath, "src/db/types.ts"),
+			databaseTypes,
+		);
+
+		// Create Kysely service
+		const kyselyService = isMySQL
+			? `import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Kysely, MysqlDialect } from 'kysely';
+import { createPool } from 'mysql2';
+import type { DB } from './types';
+
+@Injectable()
+export class KyselyService implements OnModuleInit {
+  public readonly db: Kysely<DB>;
+
+  constructor() {
+    const dialect = new MysqlDialect({
+      pool: createPool({
+        uri: process.env.DATABASE_URL!,
+      }),
+    });
+
+    this.db = new Kysely<DB>({
+      dialect,
+    });
+  }
+
+  async onModuleInit() {
+    // Test connection
+    try {
+      await this.db.selectFrom('users').select('id').limit(1).execute();
+    } catch (error) {
+      console.warn('Database connection test failed:', error);
+    }
+  }
+
+  async onModuleDestroy() {
+    await this.db.destroy();
+  }
+}
+`
+			: `import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Kysely, PostgresDialect } from 'kysely';
+import { Pool } from 'pg';
+import type { DB } from './types';
+
+@Injectable()
+export class KyselyService implements OnModuleInit {
+  public readonly db: Kysely<DB>;
+
+  constructor() {
+    const dialect = new PostgresDialect({
+      pool: new Pool({
+        connectionString: process.env.DATABASE_URL!,
+      }),
+    });
+
+    this.db = new Kysely<DB>({
+      dialect,
+    });
+  }
+
+  async onModuleInit() {
+    // Test connection
+    try {
+      await this.db.selectFrom('users').select('id').limit(1).execute();
+    } catch (error) {
+      console.warn('Database connection test failed:', error);
+    }
+  }
+
+  async onModuleDestroy() {
+    await this.db.destroy();
+  }
+}
+`;
+
+		await this.fileSystem.writeFile(
+			path.join(appPath, "src/db/kysely.service.ts"),
+			kyselyService,
+		);
+
+		// Create database module
+		const databaseModule = `import { Module } from '@nestjs/common';
+import { KyselyService } from './kysely.service';
+
+@Module({
+  providers: [KyselyService],
+  exports: [KyselyService],
+})
+export class DatabaseModule {}
+`;
+
+		await this.fileSystem.writeFile(
+			path.join(appPath, "src/db/database.module.ts"),
+			databaseModule,
+		);
+	}
+
+	private async setupAuthentication(
+		appPath: string,
+		answers: ProjectAnswers,
+	): Promise<void> {
+		logger.normal("Setting up authentication with NestJS");
+
+		// Add authentication dependencies
+		await this.fileSystem.updatePackageJson(
+			path.join(appPath, "package.json"),
+			{
+				dependencies: {
+					"@nestjs/jwt": "^10.2.0",
+					"@nestjs/passport": "^10.0.2",
+					passport: "^0.7.0",
+					"passport-jwt": "^4.0.1",
+					"passport-local": "^1.0.0",
+					bcrypt: "^5.1.1",
+				},
+				devDependencies: {
+					"@types/passport-jwt": "^3.0.13",
+					"@types/passport-local": "^1.0.38",
+					"@types/bcrypt": "^5.0.2",
+				},
+			},
+		);
+
+		// Create auth module structure
+		await this.fileSystem.ensureDirectory(path.join(appPath, "src/auth"));
+
+		// Create basic auth service
+		const authService = `import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import * as bcrypt from 'bcrypt';
+
+@Injectable()
+export class AuthService {
+  constructor(private jwtService: JwtService) {}
+
+  async validateUser(email: string, password: string): Promise<any> {
+    // Implement user validation logic here
+    // This is a placeholder implementation
+    return null;
+  }
+
+  async login(user: any) {
+    const payload = { email: user.email, sub: user.id };
+    return {
+      access_token: this.jwtService.sign(payload),
+    };
+  }
+
+  async register(email: string, password: string, name?: string) {
+    // Implement user registration logic here
+    // This is a placeholder implementation
+    const hashedPassword = await bcrypt.hash(password, 10);
+    return { email, hashedPassword, name };
+  }
+}
+`;
+
+		await this.fileSystem.writeFile(
+			path.join(appPath, "src/auth/auth.service.ts"),
+			authService,
+		);
+
+		// Create auth controller
+		const authController = `import { Controller, Post, Body, UseGuards, Request } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { AuthService } from './auth.service';
+
+@ApiTags('auth')
+@Controller('auth')
+export class AuthController {
+  constructor(private authService: AuthService) {}
+
+  @Post('login')
+  @ApiOperation({ summary: 'User login' })
+  @ApiResponse({ status: 200, description: 'Login successful' })
+  async login(@Body() loginDto: { email: string; password: string }) {
+    const user = await this.authService.validateUser(loginDto.email, loginDto.password);
+    if (!user) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+    return this.authService.login(user);
+  }
+
+  @Post('register')
+  @ApiOperation({ summary: 'User registration' })
+  @ApiResponse({ status: 201, description: 'Registration successful' })
+  async register(@Body() registerDto: { email: string; password: string; name?: string }) {
+    return this.authService.register(registerDto.email, registerDto.password, registerDto.name);
+  }
+}
+`;
+
+		await this.fileSystem.writeFile(
+			path.join(appPath, "src/auth/auth.controller.ts"),
+			authController,
+		);
+	}
+
+	private getPackageManagerFlag(packageManager: string): string {
+		switch (packageManager) {
+			case "yarn":
+				return "--package-manager=yarn";
+			case "pnpm":
+				return "--package-manager=pnpm";
+			case "bun":
+				return "--package-manager=npm"; // Fallback to npm for NestJS CLI
+			default:
+				return "--package-manager=npm";
+		}
+	}
+
+	private attachProcessLogging(process: any): void {
+		process.stdout?.on("data", (data: any) => {
+			logger.package(data.toString().trim());
+		});
+
+		process.stderr?.on("data", (data: any) => {
+			logger.error(data.toString().trim());
+		});
+	}
+}
