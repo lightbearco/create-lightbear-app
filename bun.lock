@@ -2,7 +2,7 @@
   "lockfileVersion": 1,
   "workspaces": {
     "": {
-      "name": "create-light-stack",
+      "name": "create-lightbear-app",
       "dependencies": {
         "boxen": "^7.1.1",
         "chalk": "^5.3.0",

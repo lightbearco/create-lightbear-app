@@ -11,7 +11,7 @@ async function main(): Promise<void> {
 	const program = new Command();
 
 	program
-		.name("create-light-stack")
+		.name("create-lightbear-app")
 		.description(
 			"Create a modern SaaS application with the latest technologies",
 		)

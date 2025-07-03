@@ -1,4 +1,4 @@
-# 🚀 create-light-stack
+# 🚀 create-lightbear-app
 
 <div align="center">
 
@@ -6,7 +6,7 @@
 
 *Build production-ready SaaS applications in minutes, not months*
 
-[![npm version](https://badge.fury.io/js/create-light-stack.svg)](https://badge.fury.io/js/create-light-stack)
+[![npm version](https://badge.fury.io/js/create-lightbear-app.svg)](https://badge.fury.io/js/create-lightbear-app)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node.js Version](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen)](https://nodejs.org/)
 
@@ -14,22 +14,22 @@
 
 ---
 
-## 🌟 Why create-light-stack?
+## 🌟 Why create-lightbear-app?
 
-Stop wasting time on boilerplate and start building features that matter. create-light-stack is the most comprehensive CLI tool for scaffolding modern SaaS applications with enterprise-grade architecture and best practices baked in.
+Stop wasting time on boilerplate and start building features that matter. create-lightbear-app is the most comprehensive CLI tool for scaffolding modern SaaS applications with enterprise-grade architecture and best practices baked in.
 
 ## 🎯 One Command, Infinite Possibilities
 
 ```bash
 # The fastest way to start your SaaS journey
-bunx create-light-stack@latest my-awesome-saas
+bunx create-lightbear-app@latest my-awesome-saas
 ```
 
 ## ⚡ Quick Start
 
 ```bash
 # Create a new project
-bunx create-light-stack@latest
+bunx create-lightbear-app@latest
 ```
 
 ## 🏗️ Architecture Options
@@ -221,7 +221,7 @@ We love contributions! Check out our [Contributing Guide](./CONTRIBUTING.md) to 
 
 ```bash
 # Clone the repository
-git clone https://github.com/lightbearco/create-light-stack.git
+git clone https://github.com/lightbearco/create-lightbear-app.git
 
 # Install dependencies
 bun install
@@ -235,7 +235,7 @@ bun test
 
 ## 📚 Learn More
 
-- 📖 [Documentation](https://github.com/lightbearco/create-light-stack) - GitHub README
+- 📖 [Documentation](https://github.com/lightbearco/create-lightbear-app) - GitHub README
 - 🔜 Video Tutorials - Coming soon
 - 🔜 Discord Community - Coming soon  
 - 🐦 [Follow Updates](https://twitter.com/dawar) - Creator's Twitter
@@ -254,7 +254,7 @@ bun test
 
 **⭐ Star us on GitHub — it motivates us a lot!**
 
-[⭐ Star](https://github.com/lightbearco/create-light-stack) • [🐛 Report Bug](https://github.com/lightbearco/create-light-stack/issues) • [💡 Request Feature](https://github.com/lightbearco/create-light-stack/issues)
+[⭐ Star](https://github.com/lightbearco/create-lightbear-app) • [🐛 Report Bug](https://github.com/lightbearco/create-lightbear-app/issues) • [💡 Request Feature](https://github.com/lightbearco/create-lightbear-app/issues)
 
 </div>
 

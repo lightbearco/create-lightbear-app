@@ -1,6 +1,6 @@
 {
-  "name": "create-light-stack",
-  "version": "1.0.0",
+  "name": "create-lightbear-app",
+  "version": "1.0.1",
   "description": "A CLI tool to scaffold modern SaaS applications with best practices",
   "main": "dist/index.js",
   "type": "module",
@@ -14,7 +14,7 @@
     "prepublishOnly": "npm run build"
   },
   "bin": {
-    "create-light-stack": "dist/cli.js"
+    "create-lightbear-app": "dist/cli.js"
   },
   "files": [
     "dist",
@@ -68,12 +68,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/lightbearco/create-light-stack.git"
+    "url": "git+https://github.com/lightbearco/create-lightbear-app.git"
   },
   "bugs": {
-    "url": "https://github.com/lightbearco/create-light-stack/issues"
+    "url": "https://github.com/lightbearco/create-lightbear-app/issues"
   },
-  "homepage": "https://github.com/lightbearco/create-light-stack#readme",
+  "homepage": "https://github.com/lightbearco/create-lightbear-app#readme",
   "publishConfig": {
     "access": "public"
   }
