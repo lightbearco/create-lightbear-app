@@ -107,25 +107,45 @@ export class AstroSetupService {
 		const template = answers.useTypeScript ? "minimal" : "minimal";
 
 		// Use create-astro CLI with non-interactive mode
+		const executeCmd = this.packageManager.getExecuteCommand(
+			answers.packageManager,
+		);
+		const execArgs = executeCmd.split(" ");
+		const command = execArgs[0];
+
+		if (!command) {
+			throw new Error(`Invalid execute command for ${answers.packageManager}`);
+		}
+
 		const createAstroProcess = execa(
-			"npx",
+			command,
 			[
+				...execArgs.slice(1),
 				"create-astro@latest",
 				"web",
 				"--template",
 				template,
 				"--yes",
 				"--skip-houston",
+				"--typescript",
+				"strict",
+				"--no-git",
+				"--install",
+				"false",
 			],
 			{
 				cwd: path.join(projectPath, "apps"),
-				stdio: ["pipe", "pipe", "pipe"],
+				stdio: "inherit",
 				timeout: 300000,
 				env: {
 					...process.env,
 					CI: "true",
 					FORCE_COLOR: "0",
+					npm_config_yes: "true",
+					ADBLOCK: "1",
+					DISABLE_OPENCOLLECTIVE: "true",
 				},
+				input: "\n", // Send enter key in case any prompts still show up
 			},
 		);
 
@@ -300,7 +320,7 @@ export default defineConfig({
 
 		const additionalScripts =
 			answers.linter === "biome"
-				? BiomeConfigGenerator.generateScripts()
+				? BiomeConfigGenerator.generateScripts(answers.packageManager)
 				: {
 						lint: "astro check",
 						"lint:fix": "astro check --fix",

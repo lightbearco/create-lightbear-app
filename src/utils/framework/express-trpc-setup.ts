@@ -82,7 +82,19 @@ export class ExpressTRPCSetupService {
 			"--dry-run=false",
 		];
 
-		const nxProcess = execa("npx", nxArgs, {
+		const executeCmd = this.packageManager.getExecuteCommand(
+			answers.packageManager,
+		);
+		const execArgs = executeCmd.split(" ");
+		const command = execArgs[0];
+
+		if (!command) {
+			throw new Error(`Invalid execute command for ${answers.packageManager}`);
+		}
+
+		const args = [...execArgs.slice(1), ...nxArgs];
+
+		const nxProcess = execa(command, args, {
 			cwd: projectPath,
 			stdio: ["pipe", "pipe", "pipe"],
 			timeout: 300000,
@@ -133,7 +145,7 @@ export class ExpressTRPCSetupService {
 				start: "node dist/index.js",
 				"type-check": "tsc --noEmit",
 				...(answers.linter === "biome"
-					? BiomeConfigGenerator.generateScripts()
+					? BiomeConfigGenerator.generateScripts(answers.packageManager)
 					: {
 							lint: "eslint src",
 							"lint:fix": "eslint src --fix",
@@ -401,7 +413,19 @@ SUPABASE_ANON_KEY="your-anon-key"
 
 		// Initialize Biome configuration
 		try {
-			await execa("npx", ["@biomejs/biome", "init"], {
+			const executeCmd = this.packageManager.getExecuteCommand(
+				answers.packageManager,
+			);
+			const execArgs = executeCmd.split(" ");
+			const command = execArgs[0];
+
+			if (!command) {
+				throw new Error(
+					`Invalid execute command for ${answers.packageManager}`,
+				);
+			}
+
+			await execa(command, [...execArgs.slice(1), "@biomejs/biome", "init"], {
 				cwd: appPath,
 				stdio: "pipe",
 			});
@@ -446,9 +470,27 @@ SUPABASE_ANON_KEY="your-anon-key"
 		try {
 			const provider =
 				answers.databaseProvider === "planetscale" ? "mysql" : "postgresql";
+			const executeCmd = this.packageManager.getExecuteCommand(
+				answers.packageManager,
+			);
+			const execArgs = executeCmd.split(" ");
+			const command = execArgs[0];
+
+			if (!command) {
+				throw new Error(
+					`Invalid execute command for ${answers.packageManager}`,
+				);
+			}
+
 			await execa(
-				"npx",
-				["prisma", "init", "--datasource-provider", provider],
+				command,
+				[
+					...execArgs.slice(1),
+					"prisma",
+					"init",
+					"--datasource-provider",
+					provider,
+				],
 				{
 					cwd: appPath,
 					stdio: "pipe",

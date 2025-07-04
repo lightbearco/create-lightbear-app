@@ -107,7 +107,19 @@ export class NextJsSetupService {
 			"--dry-run=false",
 		];
 
-		const nxProcess = execa("npx", nxArgs, {
+		const executeCmd = this.packageManager.getExecuteCommand(
+			answers.packageManager,
+		);
+		const execArgs = executeCmd.split(" ");
+		const command = execArgs[0];
+
+		if (!command) {
+			throw new Error(`Invalid execute command for ${answers.packageManager}`);
+		}
+
+		const args = [...execArgs.slice(1), ...nxArgs];
+
+		const nxProcess = execa(command, args, {
 			cwd: projectPath,
 			stdio: ["pipe", "pipe", "pipe"],
 			timeout: 300000,
@@ -168,19 +180,42 @@ export class NextJsSetupService {
 			answers.useTailwind ? "--tailwind" : "--no-tailwind",
 			packageManagerFlag,
 			"--yes",
+			"--no-tailwind", // We'll set up tailwind ourselves
+			"--no-src-dir", // We'll set up src dir ourselves
+			"--no-experimental-app", // Ensure stable setup
+			"--ts", // Force TypeScript
+			"--no-eslint", // We'll set up linting ourselves
 		];
 
 		logger.normal("Creating Next.js app");
 
-		const createNextProcess = execa("npx", createNextFlags, {
+		const executeCmd = this.packageManager.getExecuteCommand(
+			answers.packageManager,
+		);
+		const execArgs = executeCmd.split(" ");
+		const command = execArgs[0];
+
+		if (!command) {
+			throw new Error(`Invalid execute command for ${answers.packageManager}`);
+		}
+
+		const args = [...execArgs.slice(1), ...createNextFlags];
+
+		const createNextProcess = execa(command, args, {
 			cwd: path.join(projectPath, "apps"),
-			stdio: ["pipe", "pipe", "pipe"],
+			stdio: "inherit",
 			timeout: 300000,
 			env: {
 				...process.env,
 				CI: "true",
 				FORCE_COLOR: "0",
+				npm_config_yes: "true",
+				NEXT_TELEMETRY_DISABLED: "1",
+				// Force non-interactive mode for various tools
+				ADBLOCK: "1",
+				DISABLE_OPENCOLLECTIVE: "true",
 			},
+			input: "\n", // Send enter key in case any prompts still show up
 		});
 
 		this.attachProcessLogging(createNextProcess);
@@ -251,7 +286,7 @@ coverage/
 
 		const additionalScripts =
 			answers.linter === "biome"
-				? BiomeConfigGenerator.generateScripts()
+				? BiomeConfigGenerator.generateScripts(answers.packageManager)
 				: {
 						lint: "next lint",
 						"lint:fix": "next lint --fix",
@@ -292,7 +327,19 @@ coverage/
 
 		// Initialize Biome configuration
 		try {
-			await execa("npx", ["@biomejs/biome", "init"], {
+			const executeCmd = this.packageManager.getExecuteCommand(
+				answers.packageManager,
+			);
+			const execArgs = executeCmd.split(" ");
+			const command = execArgs[0];
+
+			if (!command) {
+				throw new Error(
+					`Invalid execute command for ${answers.packageManager}`,
+				);
+			}
+
+			await execa(command, [...execArgs.slice(1), "@biomejs/biome", "init"], {
 				cwd: appPath,
 				stdio: "pipe",
 			});
@@ -302,10 +349,26 @@ coverage/
 
 		// Run initial format
 		try {
-			await execa("npx", ["@biomejs/biome", "format", ".", "--write"], {
-				cwd: appPath,
-				stdio: "pipe",
-			});
+			const executeCmd = this.packageManager.getExecuteCommand(
+				answers.packageManager,
+			);
+			const execArgs = executeCmd.split(" ");
+			const command = execArgs[0];
+
+			if (!command) {
+				throw new Error(
+					`Invalid execute command for ${answers.packageManager}`,
+				);
+			}
+
+			await execa(
+				command,
+				[...execArgs.slice(1), "@biomejs/biome", "format", ".", "--write"],
+				{
+					cwd: appPath,
+					stdio: "pipe",
+				},
+			);
 		} catch {
 			logger.warn("Formatting skipped");
 		}

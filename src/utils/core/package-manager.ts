@@ -22,6 +22,7 @@ export interface PackageManagerStrategy {
 	): Promise<void>;
 	getCreateAppArgs(projectName: string, template?: string): string[];
 	getInstallCommand(): string[];
+	getExecuteCommand(): string;
 }
 
 class NpmStrategy implements PackageManagerStrategy {
@@ -47,6 +48,10 @@ class NpmStrategy implements PackageManagerStrategy {
 
 	getInstallCommand(): string[] {
 		return ["install"];
+	}
+
+	getExecuteCommand(): string {
+		return "npx";
 	}
 
 	private async executeInstall(
@@ -89,6 +94,10 @@ class YarnStrategy implements PackageManagerStrategy {
 		return ["install"];
 	}
 
+	getExecuteCommand(): string {
+		return "yarn dlx";
+	}
+
 	private async executeInstall(
 		args: string[],
 		options: PackageInstallOptions,
@@ -129,6 +138,10 @@ class PnpmStrategy implements PackageManagerStrategy {
 		return ["install"];
 	}
 
+	getExecuteCommand(): string {
+		return "pnpm dlx";
+	}
+
 	private async executeInstall(
 		args: string[],
 		options: PackageInstallOptions,
@@ -167,6 +180,10 @@ class BunStrategy implements PackageManagerStrategy {
 
 	getInstallCommand(): string[] {
 		return ["install"];
+	}
+
+	getExecuteCommand(): string {
+		return "bunx";
 	}
 
 	private async executeInstall(
@@ -232,5 +249,9 @@ export class PackageManagerService {
 			bun: "--use-bun",
 		};
 		return flags[packageManager];
+	}
+
+	getExecuteCommand(packageManager: PackageManager): string {
+		return this.strategies[packageManager].getExecuteCommand();
 	}
 }

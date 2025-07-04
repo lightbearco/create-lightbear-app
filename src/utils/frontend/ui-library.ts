@@ -4,6 +4,7 @@ import type { ProjectAnswers, SetupResult } from "../types/index.js";
 import { FileSystemService } from "../core/file-system.js";
 import { PackageManagerService } from "../core/package-manager.js";
 import { logger } from "../core/logger.js";
+import ora from "ora";
 
 export class UILibrarySetupService {
 	private fileSystem = new FileSystemService();
@@ -239,29 +240,72 @@ export default config;
 		);
 
 		// Initialize shadcn/ui
-		await execa("npx", ["shadcn@latest", "init", "--yes", "--force"], {
-			cwd: libPath,
-			stdio: "pipe",
-		});
+		const executeCmd = this.packageManager.getExecuteCommand(
+			answers.packageManager,
+		);
+		const execArgs = executeCmd.split(" ");
+		const command = execArgs[0];
+
+		if (!command) {
+			throw new Error(`Invalid execute command for ${answers.packageManager}`);
+		}
+
+		const initSpinner = ora("Initializing shadcn/ui...").start();
+		try {
+			await execa(
+				command,
+				[
+					...execArgs.slice(1),
+					"shadcn@latest",
+					"init",
+					"--yes",
+					`--base-color=${answers.baseColor}`,
+				],
+				{
+					cwd: libPath,
+					stdio: "pipe",
+				},
+			);
+			initSpinner.succeed("shadcn/ui initialized successfully");
+		} catch (error) {
+			initSpinner.fail("Failed to initialize shadcn/ui");
+			throw new Error(
+				`Failed to initialize shadcn/ui: ${error instanceof Error ? error.message : String(error)}`,
+			);
+		}
 
 		// Add basic components
 		const basicComponents = ["button", "card", "input", "label"];
 		const failedComponents: string[] = [];
+		const successfulComponents: string[] = [];
 
+		const componentsSpinner = ora("Installing basic components...").start();
 		for (const component of basicComponents) {
 			try {
-				await execa("npx", ["shadcn@latest", "add", component, "--yes"], {
-					cwd: libPath,
-					stdio: "pipe",
-				});
-			} catch {
+				await execa(
+					command,
+					[...execArgs.slice(1), "shadcn@latest", "add", component, "--yes"],
+					{
+						cwd: libPath,
+						stdio: "pipe",
+					},
+				);
+				successfulComponents.push(component);
+			} catch (error) {
 				failedComponents.push(component);
+				logger.warn(
+					`Failed to install component ${component}: ${error instanceof Error ? error.message : String(error)}`,
+				);
 			}
 		}
 
 		if (failedComponents.length > 0) {
-			logger.warn(
-				`Some components failed to install: ${failedComponents.join(", ")}`,
+			componentsSpinner.warn(
+				`Installed ${successfulComponents.length} components. Failed to install: ${failedComponents.join(", ")}`,
+			);
+		} else {
+			componentsSpinner.succeed(
+				`Successfully installed all ${basicComponents.length} components`,
 			);
 		}
 	}
@@ -381,11 +425,14 @@ import "./lib/globals.css";
 
 		const packageName = `@${answers.projectName}/ui`;
 
+		// Use workspace version for pnpm/yarn, regular version for npm
+		const version = answers.packageManager === "npm" ? "*" : "workspace:*";
+
 		await this.fileSystem.updatePackageJson(
 			path.join(appPath, "package.json"),
 			{
 				dependencies: {
-					[packageName]: "*",
+					[packageName]: version,
 				},
 			},
 		);

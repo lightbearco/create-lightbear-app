@@ -1,10 +1,12 @@
 import path from "path";
 import { execa } from "execa";
 import { FileSystemService } from "../utils/core/file-system.js";
+import { PackageManagerService } from "../utils/core/package-manager.js";
 import { logger } from "../utils/core/logger.js";
 import type { ProjectAnswers } from "../utils/types/index.js";
 
 const fileSystemService = new FileSystemService();
+const packageManagerService = new PackageManagerService();
 
 /**
  * Setup database configuration
@@ -188,14 +190,34 @@ async function setupPrisma(
 		const provider = isMySQL ? "mysql" : "postgresql";
 
 		// Use Prisma CLI to initialize the project
-		await execa("npx", ["prisma", "init", "--datasource-provider", provider], {
-			cwd: appPath,
-			stdio: "inherit",
-			env: {
-				...process.env,
-				CI: "true",
+		const executeCmd = packageManagerService.getExecuteCommand(
+			answers.packageManager,
+		);
+		const execArgs = executeCmd.split(" ");
+		const command = execArgs[0];
+
+		if (!command) {
+			throw new Error(`Invalid execute command for ${answers.packageManager}`);
+		}
+
+		await execa(
+			command,
+			[
+				...execArgs.slice(1),
+				"prisma",
+				"init",
+				"--datasource-provider",
+				provider,
+			],
+			{
+				cwd: appPath,
+				stdio: "inherit",
+				env: {
+					...process.env,
+					CI: "true",
+				},
 			},
-		});
+		);
 
 		// Update the generated schema with provider-specific configuration
 		const prismaSchemaPath = path.join(appPath, "prisma", "schema.prisma");

@@ -1,10 +1,12 @@
 import path from "path";
 import { execa } from "execa";
 import { FileSystemService } from "../utils/core/file-system.js";
+import { PackageManagerService } from "../utils/core/package-manager.js";
 import { logger } from "../utils/core/logger.js";
 import type { ProjectAnswers } from "../utils/types/index.js";
 
 const fileSystemService = new FileSystemService();
+const packageManagerService = new PackageManagerService();
 
 /**
  * Setup Husky for Git hooks using husky init CLI
@@ -17,7 +19,19 @@ export async function setupHusky(
 
 	try {
 		// Use Husky CLI to initialize
-		await execa("npx", ["husky", "init"], {
+		const executeCmd = packageManagerService.getExecuteCommand(
+			answers.packageManager,
+		);
+		const execArgs = executeCmd.split(" ");
+		const command = execArgs[0];
+
+		if (!command) {
+			throw new Error(`Invalid execute command for ${answers.packageManager}`);
+		}
+
+		const args = [...execArgs.slice(1), "husky", "init"];
+
+		await execa(command, args, {
 			cwd: projectPath,
 			stdio: "inherit",
 			env: {

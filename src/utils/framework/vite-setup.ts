@@ -102,7 +102,19 @@ export class ViteSetupService {
 			"--dry-run=false",
 		];
 
-		const nxProcess = execa("npx", nxArgs, {
+		const executeCmd = this.packageManager.getExecuteCommand(
+			answers.packageManager,
+		);
+		const execArgs = executeCmd.split(" ");
+		const command = execArgs[0];
+
+		if (!command) {
+			throw new Error(`Invalid execute command for ${answers.packageManager}`);
+		}
+
+		const args = [...execArgs.slice(1), ...nxArgs];
+
+		const nxProcess = execa(command, args, {
 			cwd: projectPath,
 			stdio: ["pipe", "pipe", "pipe"],
 			timeout: 300000,
@@ -151,20 +163,39 @@ export class ViteSetupService {
 		const template = answers.useTypeScript ? "react-ts" : "react";
 
 		// Use create-vite CLI with non-interactive mode
+		const executeCmd = this.packageManager.getExecuteCommand(
+			answers.packageManager,
+		);
+		const execArgs = executeCmd.split(" ");
+		const command = execArgs[0];
+
+		if (!command) {
+			throw new Error(`Invalid execute command for ${answers.packageManager}`);
+		}
+
 		const createViteProcess = execa(
-			"npx",
-			["create-vite@latest", "web", "--template", template],
+			command,
+			[
+				...execArgs.slice(1),
+				"create-vite@latest",
+				"web",
+				"--template",
+				template,
+				"--yes", // Force non-interactive mode
+			],
 			{
 				cwd: path.join(projectPath, "apps"),
-				stdio: ["pipe", "pipe", "pipe"],
+				stdio: "inherit",
 				timeout: 300000,
 				env: {
 					...process.env,
 					CI: "true",
 					FORCE_COLOR: "0",
 					npm_config_yes: "true", // Auto-confirm npm prompts
+					ADBLOCK: "1", // Disable funding messages
+					DISABLE_OPENCOLLECTIVE: "true", // Disable funding messages
 				},
-				input: "\n\n\n", // Send multiple enters to handle any remaining prompts
+				input: "\n", // Send enter key in case any prompts still show up
 			},
 		);
 
@@ -317,7 +348,7 @@ export default defineConfig({
 
 		const additionalScripts =
 			answers.linter === "biome"
-				? BiomeConfigGenerator.generateScripts()
+				? BiomeConfigGenerator.generateScripts(answers.packageManager)
 				: {
 						lint: "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
 						"lint:fix": "eslint . --ext ts,tsx --fix",

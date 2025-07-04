@@ -1,10 +1,12 @@
 import path from "path";
 import { execa } from "execa";
 import { FileSystemService } from "../utils/core/file-system.js";
+import { PackageManagerService } from "../utils/core/package-manager.js";
 import { logger } from "../utils/core/logger.js";
 import type { ProjectAnswers } from "../utils/types/index.js";
 
 const fileSystemService = new FileSystemService();
+const packageManagerService = new PackageManagerService();
 
 /**
  * Setup testing tools based on user selections
@@ -121,7 +123,17 @@ async function setupPlaywright(
 		});
 
 		// Install Playwright browsers
-		await execa("npx", ["playwright", "install"], {
+		const executeCmd = packageManagerService.getExecuteCommand(
+			answers.packageManager,
+		);
+		const execArgs = executeCmd.split(" ");
+		const command = execArgs[0];
+
+		if (!command) {
+			throw new Error(`Invalid execute command for ${answers.packageManager}`);
+		}
+
+		await execa(command, [...execArgs.slice(1), "playwright", "install"], {
 			cwd: projectPath,
 			stdio: "inherit",
 		});

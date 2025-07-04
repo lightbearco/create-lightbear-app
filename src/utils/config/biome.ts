@@ -1,6 +1,7 @@
 /** biome-ignore-all lint/complexity/noThisInStatic: <explanation> */
 /** biome-ignore-all lint/complexity/noStaticOnlyClass: <explanation> */
-import type { BiomeConfig, Frontend } from "../types/index.js";
+import type { BiomeConfig, Frontend, PackageManager } from "../types/index.js";
+import { PackageManagerService } from "../core/package-manager.js";
 
 export class BiomeConfigGenerator {
 	static generateForFramework(framework: Frontend): BiomeConfig {
@@ -217,17 +218,19 @@ export class BiomeConfigGenerator {
 		};
 	}
 
-	static generateScripts() {
+	static generateScripts(packageManager: PackageManager = "npm") {
+		const packageManagerService = new PackageManagerService();
+		const executeCmd = packageManagerService.getExecuteCommand(packageManager);
+
 		return {
-			lint: "npx @biomejs/biome check .",
-			"lint:fix": "npx @biomejs/biome check . --apply",
-			"lint:unsafe": "npx @biomejs/biome check . --apply-unsafe",
-			format: "npx @biomejs/biome format . --write",
-			"format:check": "npx @biomejs/biome format . --check",
-			"check:all": "npx @biomejs/biome check .",
-			"fix:all":
-				"npx @biomejs/biome check . --apply && npx @biomejs/biome format . --write",
-			"ci:check": "npx @biomejs/biome ci .",
+			lint: `${executeCmd} @biomejs/biome check .`,
+			"lint:fix": `${executeCmd} @biomejs/biome check . --apply`,
+			"lint:unsafe": `${executeCmd} @biomejs/biome check . --apply-unsafe`,
+			format: `${executeCmd} @biomejs/biome format . --write`,
+			"format:check": `${executeCmd} @biomejs/biome format . --check`,
+			"check:all": `${executeCmd} @biomejs/biome check .`,
+			"fix:all": `${executeCmd} @biomejs/biome check . --apply && ${executeCmd} @biomejs/biome format . --write`,
+			"ci:check": `${executeCmd} @biomejs/biome ci .`,
 		};
 	}
 

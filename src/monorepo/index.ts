@@ -2,10 +2,112 @@ import path from "path";
 import { execa } from "execa";
 import fs from "fs-extra";
 import { FileSystemService } from "../utils/core/file-system.js";
+import { PackageManagerService } from "../utils/core/package-manager.js";
 import { logger } from "../utils/core/logger.js";
 import type { ProjectAnswers, MonorepoTool } from "../utils/types/index.js";
 
 const fileSystemService = new FileSystemService();
+const packageManagerService = new PackageManagerService();
+
+/**
+ * Create comprehensive .gitignore file for the project root
+ */
+async function createProjectGitignore(projectPath: string): Promise<void> {
+	const gitignore = `# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+lerna-debug.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+*.lcov
+
+# Monorepo tools
+.turbo/
+.nx/cache/
+.nx/workspace-data
+
+# Package manager cache
+.npm
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnp.*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary folders
+tmp/
+temp/
+
+# Logs
+logs/
+*.log
+
+# Build outputs (general)
+dist/
+build/
+out/
+
+# TypeScript
+*.tsbuildinfo
+
+# Optional eslint cache
+.eslintcache
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# dotenv environment variable files
+.env.*.local
+
+# Vercel
+.vercel
+
+# Misc
+*.pem
+`;
+
+	await fileSystemService.writeFile(
+		path.join(projectPath, ".gitignore"),
+		gitignore,
+	);
+}
 
 /**
  * Setup Turborepo configuration using create-turbo CLI
@@ -18,12 +120,28 @@ export async function setupTurboRepo(
 
 	try {
 		// Use create-turbo CLI to initialize the project
+		const executeCmd = packageManagerService.getExecuteCommand(
+			answers.packageManager,
+		);
+		const execArgs = executeCmd.split(" ");
+		const command = execArgs[0];
+
+		if (!command) {
+			throw new Error(`Invalid execute command for ${answers.packageManager}`);
+		}
+
 		await execa(
-			"npx",
-			["create-turbo@latest", ".", "--skip-transforms", "--example-path=basic"],
+			command,
+			[
+				...execArgs.slice(1),
+				"create-turbo@latest",
+				".",
+				"--skip-transforms",
+				"--example-path=basic",
+			],
 			{
 				cwd: projectPath,
-				stdio: "inherit",
+				stdio: "ignore",
 				env: {
 					...process.env,
 					CI: "true",
@@ -42,6 +160,9 @@ export async function setupTurboRepo(
 		// Create our own apps and packages directories
 		await fileSystemService.ensureDirectory(path.join(projectPath, "apps"));
 		await fileSystemService.ensureDirectory(path.join(projectPath, "packages"));
+
+		// Recreate the comprehensive .gitignore file for the project root
+		await createProjectGitignore(projectPath);
 
 		// Customize turbo.json for our specific needs
 		const turboConfig = {
@@ -89,9 +210,20 @@ export async function setupNx(
 
 	try {
 		// Initialize Nx workspace using the CLI
+		const executeCmd = packageManagerService.getExecuteCommand(
+			answers.packageManager,
+		);
+		const execArgs = executeCmd.split(" ");
+		const command = execArgs[0];
+
+		if (!command) {
+			throw new Error(`Invalid execute command for ${answers.packageManager}`);
+		}
+
 		await execa(
-			"npx",
+			command,
 			[
+				...execArgs.slice(1),
 				"create-nx-workspace@latest",
 				"--preset=npm",
 				"--name=workspace",
@@ -99,7 +231,7 @@ export async function setupNx(
 			],
 			{
 				cwd: projectPath,
-				stdio: "inherit",
+				stdio: "ignore",
 			},
 		);
 
@@ -117,6 +249,9 @@ export async function setupNx(
 
 		// Clean up workspace directory
 		await fs.remove(workspacePath);
+
+		// Recreate the comprehensive .gitignore file for the project root
+		await createProjectGitignore(projectPath);
 
 		logger.success("Nx workspace initialized");
 	} catch (error) {
@@ -140,6 +275,9 @@ export async function setupNpmWorkspaces(
 	await fileSystemService.updatePackageJson(packageJsonPath, {
 		workspaces: ["apps/*", "packages/*"],
 	});
+
+	// Ensure .gitignore exists for npm workspaces
+	await createProjectGitignore(projectPath);
 
 	logger.success("npm workspaces configuration created");
 }
