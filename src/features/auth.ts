@@ -33,20 +33,392 @@ async function setupClerkAuth(
 ): Promise<void> {
 	logger.step("Configuring Clerk authentication...");
 
-	// Create auth configuration file
+	const appPath = fileSystemService.resolveAppPath(projectPath);
+
+	try {
+		// Install Clerk dependencies
+		const clerkDeps = ["@clerk/nextjs"];
+
+		await execa(answers.packageManager, ["add", ...clerkDeps], {
+			cwd: appPath,
+			stdio: "inherit",
+		});
+
+		// Create Clerk configuration
+		await createClerkConfig(appPath, answers);
+
+		// Create Clerk middleware
+		await createClerkMiddleware(appPath, answers);
+
+		// Create example Clerk components
+		await createClerkComponents(appPath, answers);
+
+		// Create Clerk provider setup
+		await createClerkProvider(appPath, answers);
+
+		// Update environment template
+		await updateEnvironmentWithClerk(appPath);
+
+		logger.success("Clerk authentication configuration completed");
+		logger.info(
+			"📝 Don't forget to set up your Clerk app at https://clerk.com and add your API keys to .env",
+		);
+	} catch (error) {
+		throw new Error(
+			`Failed to setup Clerk: ${error instanceof Error ? error.message : String(error)}`,
+		);
+	}
+}
+
+/**
+ * Create Clerk configuration
+ */
+async function createClerkConfig(
+	appPath: string,
+	answers: ProjectAnswers,
+): Promise<void> {
 	const authConfig = `// Clerk authentication configuration
-export const clerkConfig = {
-  publishableKey: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY!,
-  secretKey: process.env.CLERK_SECRET_KEY!,
+import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
+
+const isProtectedRoute = createRouteMatcher([
+  '/dashboard(.*)',
+  '/profile(.*)',
+  '/settings(.*)',
+]);
+
+export default clerkMiddleware((auth, req) => {
+  if (isProtectedRoute(req)) auth().protect();
+});
+
+export const config = {
+  matcher: [
+    // Skip Next.js internals and all static files, unless found in search params
+    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
+    // Always run for API routes
+    '/(api|trpc)(.*)',
+  ],
 };
 `;
 
-	const appPath = fileSystemService.resolveAppPath(projectPath);
 	await fileSystemService.ensureDirectory(path.join(appPath, "src/lib"));
 	await fileSystemService.writeFile(
 		path.join(appPath, "src/lib/auth.ts"),
 		authConfig,
 	);
+}
+
+/**
+ * Create Clerk middleware
+ */
+async function createClerkMiddleware(
+	appPath: string,
+	answers: ProjectAnswers,
+): Promise<void> {
+	const isAppRouter = answers.frontend === "nextjs-app";
+
+	const middlewareConfig = `import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
+
+const isProtectedRoute = createRouteMatcher([
+  '/dashboard(.*)',
+  '/profile(.*)',
+  '/settings(.*)',
+]);
+
+export default clerkMiddleware((auth, req) => {
+  if (isProtectedRoute(req)) auth().protect();
+});
+
+export const config = {
+  matcher: [
+    // Skip Next.js internals and all static files, unless found in search params
+    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
+    // Always run for API routes
+    '/(api|trpc)(.*)',
+  ],
+};
+`;
+
+	await fileSystemService.writeFile(
+		path.join(appPath, "middleware.ts"),
+		middlewareConfig,
+	);
+}
+
+/**
+ * Create Clerk provider setup
+ */
+async function createClerkProvider(
+	appPath: string,
+	answers: ProjectAnswers,
+): Promise<void> {
+	const isAppRouter = answers.frontend === "nextjs-app";
+
+	if (isAppRouter) {
+		// App Router: Update layout.tsx to include ClerkProvider
+		const layoutUpdate = `import { ClerkProvider } from '@clerk/nextjs';
+import './globals.css';
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <ClerkProvider>
+      <html lang="en">
+        <body>{children}</body>
+      </html>
+    </ClerkProvider>
+  );
+}
+`;
+
+		// Note: This is a template, the actual layout.tsx will be created by the Next.js setup
+		await fileSystemService.writeFile(
+			path.join(appPath, "src/app/layout-clerk-template.tsx"),
+			layoutUpdate,
+		);
+	} else {
+		// Pages Router: Create _app.tsx with ClerkProvider
+		const appConfig = `import type { AppProps } from 'next/app';
+import { ClerkProvider } from '@clerk/nextjs';
+import '../styles/globals.css';
+
+function MyApp({ Component, pageProps }: AppProps) {
+  return (
+    <ClerkProvider {...pageProps}>
+      <Component {...pageProps} />
+    </ClerkProvider>
+  );
+}
+
+export default MyApp;
+`;
+
+		await fileSystemService.writeFile(
+			path.join(appPath, "src/pages/_app.tsx"),
+			appConfig,
+		);
+	}
+}
+
+/**
+ * Create Clerk example components
+ */
+async function createClerkComponents(
+	appPath: string,
+	answers: ProjectAnswers,
+): Promise<void> {
+	// Create sign-in/sign-out button component
+	const userButton = `"use client";
+
+import { UserButton, useUser } from "@clerk/nextjs";
+
+export function AuthButton() {
+  const { isLoaded, isSignedIn, user } = useUser();
+
+  if (!isLoaded) {
+    return <div className="h-8 w-8 animate-pulse bg-gray-200 rounded-full" />;
+  }
+
+  if (!isSignedIn) {
+    return (
+      <div className="flex gap-2">
+        <a
+          href="/sign-in"
+          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+        >
+          Sign In
+        </a>
+        <a
+          href="/sign-up"
+          className="px-4 py-2 border border-blue-500 text-blue-500 rounded hover:bg-blue-50"
+        >
+          Sign Up
+        </a>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-3">
+      <span className="text-sm text-gray-700">
+        Welcome, {user.firstName || user.emailAddresses[0]?.emailAddress}
+      </span>
+      <UserButton afterSignOutUrl="/" />
+    </div>
+  );
+}
+`;
+
+	// Create protected route wrapper
+	const protectedRoute = `"use client";
+
+import { useAuth } from "@clerk/nextjs";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
+
+interface ProtectedRouteProps {
+  children: React.ReactNode;
+  fallback?: React.ReactNode;
+}
+
+export function ProtectedRoute({ children, fallback }: ProtectedRouteProps) {
+  const { isLoaded, isSignedIn } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (isLoaded && !isSignedIn) {
+      router.push("/sign-in");
+    }
+  }, [isLoaded, isSignedIn, router]);
+
+  if (!isLoaded) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
+  if (!isSignedIn) {
+    return fallback || (
+      <div className="min-h-screen flex items-center justify-center">
+        <p>Redirecting to sign in...</p>
+      </div>
+    );
+  }
+
+  return <>{children}</>;
+}
+`;
+
+	await fileSystemService.ensureDirectory(
+		path.join(appPath, "src/components/auth"),
+	);
+	await fileSystemService.writeFile(
+		path.join(appPath, "src/components/auth/AuthButton.tsx"),
+		userButton,
+	);
+	await fileSystemService.writeFile(
+		path.join(appPath, "src/components/auth/ProtectedRoute.tsx"),
+		protectedRoute,
+	);
+
+	// Create Clerk auth pages (sign-in, sign-up)
+	const isAppRouter = answers.frontend === "nextjs-app";
+
+	const signInPage = `import { SignIn } from "@clerk/nextjs";
+
+export default function SignInPage() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <SignIn 
+        appearance={{
+          elements: {
+            formButtonPrimary: 
+              "bg-blue-500 hover:bg-blue-600 text-sm normal-case",
+          },
+        }}
+        path="/sign-in"
+        routing="path"
+        signUpUrl="/sign-up"
+        redirectUrl="/dashboard"
+      />
+    </div>
+  );
+}
+`;
+
+	const signUpPage = `import { SignUp } from "@clerk/nextjs";
+
+export default function SignUpPage() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <SignUp 
+        appearance={{
+          elements: {
+            formButtonPrimary: 
+              "bg-blue-500 hover:bg-blue-600 text-sm normal-case",
+          },
+        }}
+        path="/sign-up"
+        routing="path"
+        signInUrl="/sign-in"
+        redirectUrl="/dashboard"
+      />
+    </div>
+  );
+}
+`;
+
+	if (isAppRouter) {
+		await fileSystemService.ensureDirectory(
+			path.join(appPath, "src/app/sign-in"),
+		);
+		await fileSystemService.ensureDirectory(
+			path.join(appPath, "src/app/sign-up"),
+		);
+		await fileSystemService.writeFile(
+			path.join(appPath, "src/app/sign-in/page.tsx"),
+			signInPage,
+		);
+		await fileSystemService.writeFile(
+			path.join(appPath, "src/app/sign-up/page.tsx"),
+			signUpPage,
+		);
+	} else {
+		await fileSystemService.ensureDirectory(path.join(appPath, "src/pages"));
+		await fileSystemService.writeFile(
+			path.join(appPath, "src/pages/sign-in.tsx"),
+			signInPage,
+		);
+		await fileSystemService.writeFile(
+			path.join(appPath, "src/pages/sign-up.tsx"),
+			signUpPage,
+		);
+	}
+}
+
+/**
+ * Update environment template with Clerk variables
+ */
+async function updateEnvironmentWithClerk(appPath: string): Promise<void> {
+	const envExamplePath = path.join(appPath, ".env.example");
+
+	const clerkEnv = `
+# Clerk Authentication Configuration
+# Get these from your Clerk dashboard: https://dashboard.clerk.com/
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY="pk_test_..."
+CLERK_SECRET_KEY="sk_test_..."
+
+# Optional: Customize Clerk URLs
+NEXT_PUBLIC_CLERK_SIGN_IN_URL="/sign-in"
+NEXT_PUBLIC_CLERK_SIGN_UP_URL="/sign-up"
+NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL="/dashboard"
+NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL="/dashboard"
+`;
+
+	try {
+		// Check if file exists first to avoid ENOENT errors
+		const fileExists = await fileSystemService.fileExists(envExamplePath);
+
+		if (fileExists) {
+			// File exists, append to it
+			const existingEnv = await fileSystemService.readFile(envExamplePath);
+			await fileSystemService.writeFile(envExamplePath, existingEnv + clerkEnv);
+		} else {
+			// File doesn't exist, create it
+			await fileSystemService.writeFile(envExamplePath, clerkEnv);
+		}
+
+		logger.info("Updated .env.example with Clerk configuration");
+	} catch (error) {
+		// Fallback: create the file with just Clerk config
+		logger.warn("Could not update existing .env.example, creating new one");
+		await fileSystemService.writeFile(envExamplePath, clerkEnv);
+		logger.info("Created .env.example with Clerk configuration");
+	}
 }
 
 /**
@@ -439,15 +811,26 @@ GITHUB_CLIENT_SECRET="your-github-client-secret"
 `;
 
 	try {
-		const existingEnv = await fileSystemService.readFile(envExamplePath);
-		await fileSystemService.writeFile(
-			envExamplePath,
-			existingEnv + nextAuthEnv,
-		);
-	} catch {
-		// File doesn't exist, create it
-		await fileSystemService.writeFile(envExamplePath, nextAuthEnv);
-	}
+		// Check if file exists first to avoid ENOENT errors
+		const fileExists = await fileSystemService.fileExists(envExamplePath);
 
-	logger.info("Updated .env.example with NextAuth.js configuration");
+		if (fileExists) {
+			// File exists, append to it
+			const existingEnv = await fileSystemService.readFile(envExamplePath);
+			await fileSystemService.writeFile(
+				envExamplePath,
+				existingEnv + nextAuthEnv,
+			);
+		} else {
+			// File doesn't exist, create it
+			await fileSystemService.writeFile(envExamplePath, nextAuthEnv);
+		}
+
+		logger.info("Updated .env.example with NextAuth.js configuration");
+	} catch (error) {
+		// Fallback: create the file with just NextAuth config
+		logger.warn("Could not update existing .env.example, creating new one");
+		await fileSystemService.writeFile(envExamplePath, nextAuthEnv);
+		logger.info("Created .env.example with NextAuth.js configuration");
+	}
 }

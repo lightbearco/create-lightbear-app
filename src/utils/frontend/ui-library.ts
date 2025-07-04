@@ -221,111 +221,345 @@ export function cn(...inputs: ClassValue[]) {
 
 		// Create tailwind config for the library
 		const tailwindConfig = `import type { Config } from "tailwindcss";
+	import { fontFamily } from "tailwindcss/defaultTheme";
 
-const config: Config = {
-  content: [
-    "./src/**/*.{js,ts,jsx,tsx,mdx}",
-  ],
-  theme: {
-    extend: {},
-  },
-  plugins: [],
-};
+	const config = {
+		darkMode: ["class"],
+		content: ["./src/**/*.{js,ts,jsx,tsx,mdx}"],
+		theme: {
+			container: {
+				center: true,
+				padding: "2rem",
+				screens: {
+					"2xl": "1400px",
+				},
+			},
+			extend: {
+				colors: {
+					border: "hsl(var(--border))",
+					input: "hsl(var(--input))",
+					ring: "hsl(var(--ring))",
+					background: "hsl(var(--background))",
+					foreground: "hsl(var(--foreground))",
+					primary: {
+						DEFAULT: "hsl(var(--primary))",
+						foreground: "hsl(var(--primary-foreground))",
+					},
+					secondary: {
+						DEFAULT: "hsl(var(--secondary))",
+						foreground: "hsl(var(--secondary-foreground))",
+					},
+					destructive: {
+						DEFAULT: "hsl(var(--destructive))",
+						foreground: "hsl(var(--destructive-foreground))",
+					},
+					muted: {
+						DEFAULT: "hsl(var(--muted))",
+						foreground: "hsl(var(--muted-foreground))",
+					},
+					accent: {
+						DEFAULT: "hsl(var(--accent))",
+						foreground: "hsl(var(--accent-foreground))",
+					},
+					popover: {
+						DEFAULT: "hsl(var(--popover))",
+						foreground: "hsl(var(--popover-foreground))",
+					},
+					card: {
+						DEFAULT: "hsl(var(--card))",
+						foreground: "hsl(var(--card-foreground))",
+					},
+				},
+				borderRadius: {
+					lg: "var(--radius)",
+					md: "calc(var(--radius) - 2px)",
+					sm: "calc(var(--radius) - 4px)",
+				},
+				fontFamily: {
+					sans: ["var(--font-sans)", ...fontFamily.sans],
+				},
+				keyframes: {
+					"accordion-down": {
+						from: { height: "0" },
+						to: { height: "var(--radix-accordion-content-height)" },
+					},
+					"accordion-up": {
+						from: { height: "var(--radix-accordion-content-height)" },
+						to: { height: "0" },
+					},
+				},
+				animation: {
+					"accordion-down": "accordion-down 0.2s ease-out",
+					"accordion-up": "accordion-up 0.2s ease-out",
+				},
+			},
+		},
+		plugins: [require("tailwindcss-animate")],
+	} satisfies Config;
 
-export default config;
-`;
+	export default config;
+	`;
 		await this.fileSystem.writeFile(
 			path.join(libPath, "tailwind.config.ts"),
 			tailwindConfig,
 		);
 
-		// Initialize shadcn/ui
-		const executeCmd = this.packageManager.getExecuteCommand(
-			answers.packageManager,
+		// Create basic components directory structure
+		await this.fileSystem.ensureDirectory(
+			path.join(libPath, "src", "components", "ui"),
 		);
-		const execArgs = executeCmd.split(" ");
-		const command = execArgs[0];
 
-		if (!command) {
-			throw new Error(`Invalid execute command for ${answers.packageManager}`);
-		}
+		// Create basic components
+		await this.createBasicComponents(libPath);
 
-		const initSpinner = ora("Initializing shadcn/ui...").start();
-		try {
-			await execa(
-				command,
-				[
-					...execArgs.slice(1),
-					"shadcn@latest",
-					"init",
-					"--yes",
-					`--base-color=${answers.baseColor}`,
-				],
-				{
-					cwd: libPath,
-					stdio: "pipe",
-				},
-			);
-			initSpinner.succeed("shadcn/ui initialized successfully");
-		} catch (error) {
-			initSpinner.fail("Failed to initialize shadcn/ui");
-			throw new Error(
-				`Failed to initialize shadcn/ui: ${error instanceof Error ? error.message : String(error)}`,
-			);
-		}
+		logger.success("shadcn/ui initialized successfully");
+	}
 
-		// Add basic components
-		const basicComponents = ["button", "card", "input", "label"];
-		const failedComponents: string[] = [];
-		const successfulComponents: string[] = [];
+	/**
+	 * Create basic shadcn/ui components
+	 */
+	private async createBasicComponents(libPath: string): Promise<void> {
+		const componentsPath = path.join(libPath, "src", "components", "ui");
 
-		const componentsSpinner = ora("Installing basic components...").start();
-		for (const component of basicComponents) {
-			try {
-				await execa(
-					command,
-					[...execArgs.slice(1), "shadcn@latest", "add", component, "--yes"],
-					{
-						cwd: libPath,
-						stdio: "pipe",
-					},
-				);
-				successfulComponents.push(component);
-			} catch (error) {
-				failedComponents.push(component);
-				logger.warn(
-					`Failed to install component ${component}: ${error instanceof Error ? error.message : String(error)}`,
-				);
-			}
-		}
+		// Button component
+		const buttonComponent = `"use client"
 
-		if (failedComponents.length > 0) {
-			componentsSpinner.warn(
-				`Installed ${successfulComponents.length} components. Failed to install: ${failedComponents.join(", ")}`,
-			);
-		} else {
-			componentsSpinner.succeed(
-				`Successfully installed all ${basicComponents.length} components`,
-			);
-		}
+import * as React from "react"
+import { Slot } from "@radix-ui/react-slot"
+import { cva, type VariantProps } from "class-variance-authority"
+
+import { cn } from "@/lib/utils"
+
+const buttonVariants = cva(
+  "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
+  {
+    variants: {
+      variant: {
+        default:
+          "bg-primary text-primary-foreground shadow hover:bg-primary/90",
+        destructive:
+          "bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90",
+        outline:
+          "border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground",
+        secondary:
+          "bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80",
+        ghost: "hover:bg-accent hover:text-accent-foreground",
+        link: "text-primary underline-offset-4 hover:underline",
+      },
+      size: {
+        default: "h-9 px-4 py-2",
+        sm: "h-8 rounded-md px-3 text-xs",
+        lg: "h-10 rounded-md px-8",
+        icon: "h-9 w-9",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+      size: "default",
+    },
+  }
+)
+
+export interface ButtonProps
+  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
+    VariantProps<typeof buttonVariants> {
+  asChild?: boolean
+}
+
+const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
+  ({ className, variant, size, asChild = false, ...props }, ref) => {
+    const Comp = asChild ? Slot : "button"
+    return (
+      <Comp
+        className={cn(buttonVariants({ variant, size, className }))}
+        ref={ref}
+        {...props}
+      />
+    )
+  }
+)
+Button.displayName = "Button"
+
+export { Button, buttonVariants }`;
+
+		// Input component
+		const inputComponent = `"use client"
+
+import * as React from "react"
+
+import { cn } from "@/lib/utils"
+
+export interface InputProps
+  extends React.InputHTMLAttributes<HTMLInputElement> {}
+
+const Input = React.forwardRef<HTMLInputElement, InputProps>(
+  ({ className, type, ...props }, ref) => {
+    return (
+      <input
+        type={type}
+        className={cn(
+          "flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
+          className
+        )}
+        ref={ref}
+        {...props}
+      />
+    )
+  }
+)
+Input.displayName = "Input"
+
+export { Input }`;
+
+		// Label component
+		const labelComponent = `"use client"
+
+import * as React from "react"
+import * as LabelPrimitive from "@radix-ui/react-label"
+import { cva, type VariantProps } from "class-variance-authority"
+
+import { cn } from "@/lib/utils"
+
+const labelVariants = cva(
+  "text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+)
+
+const Label = React.forwardRef<
+  React.ElementRef<typeof LabelPrimitive.Root>,
+  React.ComponentPropsWithoutRef<typeof LabelPrimitive.Root> &
+    VariantProps<typeof labelVariants>
+>(({ className, ...props }, ref) => (
+  <LabelPrimitive.Root
+    ref={ref}
+    className={cn(labelVariants(), className)}
+    {...props}
+  />
+))
+Label.displayName = LabelPrimitive.Root.displayName
+
+export { Label }`;
+
+		// Card component
+		const cardComponent = `"use client"
+
+import * as React from "react"
+
+import { cn } from "@/lib/utils"
+
+const Card = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+  <div
+    ref={ref}
+    className={cn(
+      "rounded-xl border bg-card text-card-foreground shadow",
+      className
+    )}
+    {...props}
+  />
+))
+Card.displayName = "Card"
+
+const CardHeader = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+  <div
+    ref={ref}
+    className={cn("flex flex-col space-y-1.5 p-6", className)}
+    {...props}
+  />
+))
+CardHeader.displayName = "CardHeader"
+
+const CardTitle = React.forwardRef<
+  HTMLParagraphElement,
+  React.HTMLAttributes<HTMLHeadingElement>
+>(({ className, ...props }, ref) => (
+  <h3
+    ref={ref}
+    className={cn("font-semibold leading-none tracking-tight", className)}
+    {...props}
+  />
+))
+CardTitle.displayName = "CardTitle"
+
+const CardDescription = React.forwardRef<
+  HTMLParagraphElement,
+  React.HTMLAttributes<HTMLParagraphElement>
+>(({ className, ...props }, ref) => (
+  <p
+    ref={ref}
+    className={cn("text-sm text-muted-foreground", className)}
+    {...props}
+  />
+))
+CardDescription.displayName = "CardDescription"
+
+const CardContent = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+  <div ref={ref} className={cn("p-6 pt-0", className)} {...props} />
+))
+CardContent.displayName = "CardContent"
+
+const CardFooter = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+  <div
+    ref={ref}
+    className={cn("flex items-center p-6 pt-0", className)}
+    {...props}
+  />
+))
+CardFooter.displayName = "CardFooter"
+
+export { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent }`;
+
+		await this.fileSystem.writeFile(
+			path.join(componentsPath, "button.tsx"),
+			buttonComponent,
+		);
+		await this.fileSystem.writeFile(
+			path.join(componentsPath, "input.tsx"),
+			inputComponent,
+		);
+		await this.fileSystem.writeFile(
+			path.join(componentsPath, "label.tsx"),
+			labelComponent,
+		);
+		await this.fileSystem.writeFile(
+			path.join(componentsPath, "card.tsx"),
+			cardComponent,
+		);
+
+		// Create index.ts to export all components
+		const indexContent = `export * from "./button"
+export * from "./card"
+export * from "./input"
+export * from "./label"`;
+
+		await this.fileSystem.writeFile(
+			path.join(componentsPath, "index.ts"),
+			indexContent,
+		);
 	}
 
 	/**
 	 * Setup library exports
 	 */
 	private async setupLibraryExports(libPath: string): Promise<void> {
-		const indexContent = `// Export all UI components
-export * from "./components/ui/button";
-export * from "./components/ui/card";
-export * from "./components/ui/input";
-export * from "./components/ui/label";
+		const indexContent = `// Components
+export * from "./components/ui";
 
-// Export utilities
+// Utilities
 export * from "./lib/utils";
 
-// Export styles (this will be imported by the consumer)
-import "./lib/globals.css";
-`;
+// Styles
+import "./lib/globals.css";`;
 
 		await this.fileSystem.writeFile(
 			path.join(libPath, "src", "index.ts"),
@@ -362,24 +596,28 @@ import "./lib/globals.css";
 				"type-check": "tsc --noEmit",
 			},
 			dependencies: {
-				"@radix-ui/react-label": "^2.1.0",
-				"@radix-ui/react-slot": "^1.1.0",
-				"class-variance-authority": "^0.7.1",
-				clsx: "^2.1.1",
-				"lucide-react": "^0.468.0",
-				"tailwind-merge": "^2.5.4",
+				"@radix-ui/react-label": "^2.0.2",
+				"@radix-ui/react-slot": "^1.0.2",
+				"class-variance-authority": "^0.7.0",
+				clsx: "^2.1.0",
+				"lucide-react": "^0.344.0",
+				"tailwind-merge": "^2.2.1",
+				"tailwindcss-animate": "^1.0.7",
 			},
 			devDependencies: {
-				"@types/react": "^18.3.12",
-				"@types/react-dom": "^18.3.1",
-				react: "^18.3.1",
-				"react-dom": "^18.3.1",
-				tailwindcss: "^4.0.0",
-				typescript: "^5.6.3",
+				"@types/node": "^20.11.24",
+				"@types/react": "^18.2.61",
+				"@types/react-dom": "^18.2.19",
+				autoprefixer: "^10.4.18",
+				postcss: "^8.4.35",
+				react: "^18.2.0",
+				"react-dom": "^18.2.0",
+				tailwindcss: "^3.4.1",
+				typescript: "^5.3.3",
 			},
 			peerDependencies: {
-				react: "^18.3.1",
-				"react-dom": "^18.3.1",
+				react: "^18.2.0",
+				"react-dom": "^18.2.0",
 			},
 		};
 

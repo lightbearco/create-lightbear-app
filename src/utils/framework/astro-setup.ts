@@ -106,57 +106,270 @@ export class AstroSetupService {
 
 		const template = answers.useTypeScript ? "minimal" : "minimal";
 
-		// Use create-astro CLI with non-interactive mode
-		const executeCmd = this.packageManager.getExecuteCommand(
-			answers.packageManager,
-		);
-		const execArgs = executeCmd.split(" ");
-		const command = execArgs[0];
-
-		if (!command) {
-			throw new Error(`Invalid execute command for ${answers.packageManager}`);
-		}
-
-		const createAstroProcess = execa(
-			command,
-			[
-				...execArgs.slice(1),
-				"create-astro@latest",
-				"web",
-				"--template",
-				template,
-				"--yes",
-				"--skip-houston",
-				"--typescript",
-				"strict",
-				"--no-git",
-				"--install",
-				"false",
-			],
-			{
-				cwd: path.join(projectPath, "apps"),
-				stdio: "inherit",
-				timeout: 300000,
-				env: {
-					...process.env,
-					CI: "true",
-					FORCE_COLOR: "0",
-					npm_config_yes: "true",
-					ADBLOCK: "1",
-					DISABLE_OPENCOLLECTIVE: "true",
-				},
-				input: "\n", // Send enter key in case any prompts still show up
-			},
-		);
-
-		this.attachProcessLogging(createAstroProcess);
-		await createAstroProcess;
+		// Create Astro app manually from template
+		await this.createAstroAppFromTemplate(projectPath, answers, template);
 
 		// Create Astro specific .gitignore
 		const appPath = this.fileSystem.resolveAppPath(projectPath);
 		await this.createAstroGitignore(appPath);
 
 		logger.success("Astro app created successfully");
+	}
+
+	private async createAstroAppFromTemplate(
+		projectPath: string,
+		answers: ProjectAnswers,
+		template: string,
+	): Promise<void> {
+		const appPath = path.join(projectPath, "apps", "web");
+
+		// Create directory structure
+		await this.fileSystem.ensureDirectory(appPath);
+		await this.fileSystem.ensureDirectory(path.join(appPath, "src"));
+		await this.fileSystem.ensureDirectory(path.join(appPath, "src", "pages"));
+		await this.fileSystem.ensureDirectory(path.join(appPath, "public"));
+
+		// Create package.json
+		const packageJson = {
+			name: "web",
+			type: "module",
+			version: "0.0.1",
+			scripts: {
+				dev: "astro dev",
+				start: "astro dev",
+				build: "astro check && astro build",
+				preview: "astro preview",
+				astro: "astro",
+			},
+			dependencies: {
+				astro: "^4.15.0",
+			},
+			devDependencies: answers.useTypeScript
+				? {
+						"@types/node": "^22.0.0",
+						typescript: "^5.0.0",
+					}
+				: {},
+		};
+
+		await this.fileSystem.writeFile(
+			path.join(appPath, "package.json"),
+			JSON.stringify(packageJson, null, 2),
+		);
+
+		// Create astro.config.mjs
+		const astroConfig = `import { defineConfig } from 'astro/config';
+
+// https://astro.build/config
+export default defineConfig({});`;
+
+		await this.fileSystem.writeFile(
+			path.join(appPath, "astro.config.mjs"),
+			astroConfig,
+		);
+
+		// Create TypeScript config if needed
+		if (answers.useTypeScript) {
+			const tsConfig = {
+				extends: "astro/tsconfigs/strict",
+				compilerOptions: {
+					baseUrl: ".",
+					paths: {
+						"@/*": ["src/*"],
+					},
+				},
+			};
+
+			await this.fileSystem.writeFile(
+				path.join(appPath, "tsconfig.json"),
+				JSON.stringify(tsConfig, null, 2),
+			);
+		}
+
+		// Create main page
+		const indexPage = answers.useTypeScript
+			? `---
+// Welcome to Astro! Everything between these triple-dash code fences
+// is your "component script" that runs on the server.
+console.log('This runs in the server console!');
+---
+
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="description" content="Astro description" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+		<title>Astro</title>
+	</head>
+	<body>
+		<main>
+			<h1>Welcome to <span class="text-gradient">Astro</span></h1>
+			<p>
+				To get started, open the directory <code>src/pages</code> in your project.<br />
+				<strong>Code Challenge:</strong> Tweak the "Welcome to Astro" message above.
+			</p>
+			<ul role="list" class="link-card-grid">
+				<li class="link-card">
+					<a href="https://docs.astro.build/">
+						<h2>Documentation</h2>
+						<p>Learn how Astro works and explore the official API docs.</p>
+					</a>
+				</li>
+				<li class="link-card">
+					<a href="https://astro.build/integrations/">
+						<h2>Integrations</h2>
+						<p>Supercharge your project with new frameworks and libraries.</p>
+					</a>
+				</li>
+				<li class="link-card">
+					<a href="https://astro.build/themes/">
+						<h2>Themes</h2>
+						<p>Explore a galaxy of community-built starter themes.</p>
+					</a>
+				</li>
+				<li class="link-card">
+					<a href="https://astro.build/chat/">
+						<h2>Community</h2>
+						<p>Come say hi to our amazing Discord community. ✨</p>
+					</a>
+				</li>
+			</ul>
+		</main>
+		<style>
+			main {
+				margin: auto;
+				padding: 1rem;
+				width: 800px;
+				max-width: calc(100% - 2rem);
+				color: white;
+				font-size: 20px;
+				line-height: 1.6;
+			}
+			.astro-a {
+				position: absolute;
+				top: -32px;
+				left: 50%;
+				transform: translatex(-50%);
+				width: 220px;
+				height: auto;
+				z-index: -1;
+			}
+			h1 {
+				font-size: 4rem;
+				font-weight: 700;
+				line-height: 1;
+				text-align: center;
+				margin-bottom: 1em;
+			}
+			.text-gradient {
+				background-image: var(--accent-gradient);
+				-webkit-background-clip: text;
+				-webkit-text-fill-color: transparent;
+				background-size: 400%;
+				background-position: 0%;
+			}
+			.link-card-grid {
+				display: grid;
+				grid-template-columns: repeat(auto-fit, minmax(24ch, 1fr));
+				gap: 2rem;
+				padding: 0;
+			}
+		</style>
+
+		<style is:global>
+			:root {
+				--accent: 136, 58, 234;
+				--accent-light: 224, 204, 250;
+				--accent-dark: 49, 10, 101;
+				--accent-gradient: linear-gradient(
+					45deg,
+					rgb(var(--accent)),
+					rgb(var(--accent-light)) 30%,
+					white 60%
+				);
+			}
+			html {
+				font-family: system-ui, sans-serif;
+				background: #13151a;
+				background-size: 224px 224px;
+			}
+			code {
+				font-family:
+					Menlo,
+					Monaco,
+					Lucida Console,
+					Liberation Mono,
+					DejaVu Sans Mono,
+					Bitstream Vera Sans Mono,
+					Courier New,
+					monospace;
+			}
+		</style>
+	</body>
+</html>`
+			: `---
+// Welcome to Astro! Everything between these triple-dash code fences
+// is your "component script" that runs on the server.
+console.log('This runs in the server console!');
+---
+
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="description" content="Astro description" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+		<title>Astro</title>
+	</head>
+	<body>
+		<main>
+			<h1>Welcome to <span class="text-gradient">Astro</span></h1>
+			<p>
+				To get started, open the directory <code>src/pages</code> in your project.<br />
+				<strong>Code Challenge:</strong> Tweak the "Welcome to Astro" message above.
+			</p>
+		</main>
+	</body>
+</html>`;
+
+		await this.fileSystem.writeFile(
+			path.join(appPath, "src", "pages", "index.astro"),
+			indexPage,
+		);
+
+		// Create favicon.svg
+		const favicon = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 128 128">
+    <path d="M50.4 78.5a75.1 75.1 0 0 0-28.5 6.9l24.2-65.7c.7-2 1.9-3.2 3.4-3.2h29c1.5 0 2.7 1.2 3.4 3.2l24.2 65.7s-11.6-7-28.5-7L67 45.5c-.4-1.7-1.6-2.8-2.9-2.8-1.3 0-2.5 1.1-2.9 2.7L50.4 78.5Zm-1.1 28.2Zm-4.2-20.2c-2 6.6-.6 15.8 4.2 20.2a17.5 17.5 0 0 1 .2-.7 5.5 5.5 0 0 1 5.7-4.5c2.8.1 4.3 1.5 4.7 4.7.2 1.1.2 2.3.2 3.5v.4c0 2.7.7 5.2 2.2 7.4a13 13 0 0 0 5.7 4.9v-.3l-.2-.3c-1.8-5.6-.5-9.5 4.4-12.8l1.5-1a73 73 0 0 0 3.2-2.2 16 16 0 0 0 6.8-11.4c.3-2 .1-4-.6-6l-.8.6-1.6 1a37 37 0 0 1-22.4 2.7c-5-.7-9.7-2-13.2-6.2Z"/>
+    <style>
+        path { fill: #000; }
+        @media (prefers-color-scheme: dark) {
+            path { fill: #FFF; }
+        }
+    </style>
+</svg>`;
+
+		await this.fileSystem.writeFile(
+			path.join(appPath, "public", "favicon.svg"),
+			favicon,
+		);
+
+		// Install dependencies
+		await this.packageManager.installPackages(
+			["astro"],
+			answers.packageManager,
+			{ cwd: appPath },
+		);
+
+		if (answers.useTypeScript) {
+			await this.packageManager.installPackages(
+				["@types/node", "typescript"],
+				answers.packageManager,
+				{ cwd: appPath, dev: true },
+			);
+		}
 	}
 
 	/**

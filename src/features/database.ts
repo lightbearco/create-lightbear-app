@@ -174,57 +174,38 @@ model User {
 }
 
 /**
- * Setup Prisma ORM using prisma init CLI
+ * Setup Prisma ORM manually without CLI
  */
 async function setupPrisma(
 	projectPath: string,
 	answers: ProjectAnswers,
 ): Promise<void> {
-	logger.step("Configuring Prisma using CLI...");
+	logger.step("Configuring Prisma...");
 
 	const appPath = fileSystemService.resolveAppPath(projectPath);
 
 	try {
-		// Determine provider based on database selection
-		const isMySQL = answers.databaseProvider === "planetscale";
-		const provider = isMySQL ? "mysql" : "postgresql";
-
-		// Use Prisma CLI to initialize the project
-		const executeCmd = packageManagerService.getExecuteCommand(
+		// Install Prisma dependencies
+		await packageManagerService.installPackages(
+			["@prisma/client"],
 			answers.packageManager,
-		);
-		const execArgs = executeCmd.split(" ");
-		const command = execArgs[0];
-
-		if (!command) {
-			throw new Error(`Invalid execute command for ${answers.packageManager}`);
-		}
-
-		await execa(
-			command,
-			[
-				...execArgs.slice(1),
-				"prisma",
-				"init",
-				"--datasource-provider",
-				provider,
-			],
-			{
-				cwd: appPath,
-				stdio: "inherit",
-				env: {
-					...process.env,
-					CI: "true",
-				},
-			},
+			{ cwd: appPath },
 		);
 
-		// Update the generated schema with provider-specific configuration
-		const prismaSchemaPath = path.join(appPath, "prisma", "schema.prisma");
+		await packageManagerService.installPackages(
+			["prisma"],
+			answers.packageManager,
+			{ cwd: appPath, dev: true },
+		);
 
-		// Create provider-specific schema content
+		// Create prisma directory and schema
+		await fileSystemService.ensureDirectory(path.join(appPath, "prisma"));
+
 		const schemaContent = createPrismaSchema(answers.databaseProvider);
-		await fileSystemService.writeFile(prismaSchemaPath, schemaContent);
+		await fileSystemService.writeFile(
+			path.join(appPath, "prisma", "schema.prisma"),
+			schemaContent,
+		);
 
 		// Create Prisma client configuration
 		const prismaClient = `import { PrismaClient } from "@prisma/client";
@@ -244,7 +225,10 @@ if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
 			prismaClient,
 		);
 
-		logger.success("Prisma initialized using CLI");
+		logger.success("Prisma initialized");
+		logger.info(
+			"Run 'npx prisma generate' after setup to generate the Prisma client",
+		);
 	} catch (error) {
 		throw new Error(
 			`Failed to initialize Prisma: ${error instanceof Error ? error.message : String(error)}`,

@@ -9,6 +9,65 @@ const fileSystemService = new FileSystemService();
 const packageManagerService = new PackageManagerService();
 
 /**
+ * Install Storybook dependencies based on framework
+ */
+async function installStorybookDependencies(
+	appPath: string,
+	answers: ProjectAnswers,
+): Promise<void> {
+	logger.step("Installing Storybook dependencies...");
+
+	// Base Storybook dependencies
+	const baseDependencies = [
+		"@storybook/addon-essentials",
+		"@storybook/addon-interactions",
+		"@storybook/addon-a11y",
+		"@storybook/addon-viewport",
+		"@storybook/blocks",
+		"@storybook/test",
+		"storybook",
+	];
+
+	// Framework-specific dependencies
+	let frameworkDependencies: string[] = [];
+
+	if (
+		answers.frontend === "nextjs-app" ||
+		answers.frontend === "nextjs-pages"
+	) {
+		frameworkDependencies = ["@storybook/nextjs"];
+	} else if (answers.frontend === "vite") {
+		frameworkDependencies = ["@storybook/react-vite", "@storybook/react"];
+	} else {
+		// Default React setup
+		frameworkDependencies = ["@storybook/react", "@storybook/react-webpack5"];
+	}
+
+	// Add Tailwind addon if using Tailwind
+	if (answers.useTailwind) {
+		if (
+			answers.frontend === "nextjs-app" ||
+			answers.frontend === "nextjs-pages"
+		) {
+			baseDependencies.push("@storybook/addon-styling-webpack");
+		} else {
+			baseDependencies.push("@storybook/addon-styling");
+		}
+	}
+
+	// Install all dependencies
+	const allDependencies = [...baseDependencies, ...frameworkDependencies];
+
+	await packageManagerService.installPackages(
+		allDependencies,
+		answers.packageManager,
+		{ cwd: appPath, dev: true },
+	);
+
+	logger.success("Storybook dependencies installed");
+}
+
+/**
  * Setup Storybook for component library development
  */
 export async function setupStorybook(
@@ -20,25 +79,11 @@ export async function setupStorybook(
 	const appPath = fileSystemService.resolveAppPath(projectPath);
 
 	try {
-		// Initialize Storybook with automatic detection
-		const executeCmd = packageManagerService.getExecuteCommand(
-			answers.packageManager,
-		);
-		const execArgs = executeCmd.split(" ");
-		const command = execArgs[0];
+		// Install Storybook dependencies manually
+		await installStorybookDependencies(appPath, answers);
 
-		if (!command) {
-			throw new Error(`Invalid execute command for ${answers.packageManager}`);
-		}
-
-		await execa(
-			command,
-			[...execArgs.slice(1), "storybook@latest", "init", "--yes"],
-			{
-				cwd: appPath,
-				stdio: "inherit",
-			},
-		);
+		// Create Storybook directory structure
+		await fileSystemService.ensureDirectory(path.join(appPath, ".storybook"));
 
 		// Configure Storybook based on frontend framework
 		await configureStorybookForFramework(appPath, answers);
@@ -53,6 +98,9 @@ export async function setupStorybook(
 		await updatePackageJsonWithStorybookScripts(appPath, answers);
 
 		logger.success("Storybook setup completed");
+		logger.info(
+			"Run 'npm run storybook' to start the Storybook development server",
+		);
 	} catch (error) {
 		throw new Error(
 			`Failed to setup Storybook: ${error instanceof Error ? error.message : String(error)}`,

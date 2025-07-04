@@ -8,12 +8,17 @@ import type {
 import { logger } from "../core/logger.js";
 import { FileSystemService } from "../core/file-system.js";
 import { PackageManagerService } from "../core/package-manager.js";
+import { NxCliService } from "../core/nx-cli.js";
 
 export class NestJsSetupService {
+	private nxCliService: NxCliService;
+
 	constructor(
 		private fileSystem: FileSystemService,
 		private packageManager: PackageManagerService,
-	) {}
+	) {
+		this.nxCliService = new NxCliService();
+	}
 
 	async setup(context: ExecutionContext): Promise<SetupResult> {
 		try {
@@ -56,63 +61,46 @@ export class NestJsSetupService {
 	private async setupWithNx(context: ExecutionContext): Promise<SetupResult> {
 		const { projectPath, answers } = context;
 
-		logger.normal("Creating NestJS backend with Nx");
+		logger.normal("Creating NestJS backend with Nx generator");
 
-		const nxArgs = [
-			"nx",
-			"g",
-			"@nx/nest:app",
-			"api",
-			"--no-interactive",
-			"--dry-run=false",
-		];
+		try {
+			// Generate NestJS application using Nx generator
+			await this.nxCliService.runGenerator(
+				projectPath,
+				{
+					generator: "@nx/nest:app",
+					name: "api",
+					options: {
+						"skip-format": true,
+					},
+				},
+				answers.packageManager,
+			);
 
-		const executeCmd = this.packageManager.getExecuteCommand(
-			answers.packageManager,
-		);
-		const execArgs = executeCmd.split(" ");
-		const command = execArgs[0];
+			const appPath = this.fileSystem.resolveBackendPath(projectPath);
 
-		if (!command) {
-			throw new Error(`Invalid execute command for ${answers.packageManager}`);
+			// Create NestJS specific .gitignore
+			await this.createNestJsGitignore(appPath);
+
+			// Setup database integration if needed
+			if (answers.ormDatabase !== "none") {
+				await this.setupDatabase(appPath, answers);
+			}
+
+			// Setup authentication if needed
+			if (answers.authentication !== "none") {
+				await this.setupAuthentication(appPath, answers);
+			}
+
+			return {
+				success: true,
+				message: "NestJS with Nx setup completed successfully!",
+			};
+		} catch (error) {
+			throw new Error(
+				`Failed to create NestJS app with Nx: ${error instanceof Error ? error.message : String(error)}`,
+			);
 		}
-
-		const args = [...execArgs.slice(1), ...nxArgs];
-
-		const nxProcess = execa(command, args, {
-			cwd: projectPath,
-			stdio: ["pipe", "pipe", "pipe"],
-			timeout: 300000,
-			env: {
-				...process.env,
-				CI: "true",
-				FORCE_COLOR: "0",
-				NX_INTERACTIVE: "false",
-			},
-		});
-
-		this.attachProcessLogging(nxProcess);
-		await nxProcess;
-
-		const appPath = this.fileSystem.resolveBackendPath(projectPath);
-
-		// Create NestJS specific .gitignore
-		await this.createNestJsGitignore(appPath);
-
-		// Setup database integration if needed
-		if (answers.ormDatabase !== "none") {
-			await this.setupDatabase(appPath, answers);
-		}
-
-		// Setup authentication if needed
-		if (answers.authentication !== "none") {
-			await this.setupAuthentication(appPath, answers);
-		}
-
-		return {
-			success: true,
-			message: "NestJS with Nx setup completed successfully!",
-		};
 	}
 
 	private async createNestApp(

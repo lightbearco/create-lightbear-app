@@ -111,7 +111,7 @@ function createTestingSteps(answers: ProjectAnswers): {
 	if (hasPlaywright) {
 		playwrightInstall = `
     - name: Install Playwright Browsers
-      run: npx playwright install --with-deps
+      run: ${answers.packageManager} exec playwright install --with-deps
     `;
 	}
 

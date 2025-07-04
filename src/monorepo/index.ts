@@ -3,11 +3,13 @@ import { execa } from "execa";
 import fs from "fs-extra";
 import { FileSystemService } from "../utils/core/file-system.js";
 import { PackageManagerService } from "../utils/core/package-manager.js";
+import { NxCliService } from "../utils/core/nx-cli.js";
 import { logger } from "../utils/core/logger.js";
 import type { ProjectAnswers, MonorepoTool } from "../utils/types/index.js";
 
 const fileSystemService = new FileSystemService();
 const packageManagerService = new PackageManagerService();
+const nxCliService = new NxCliService();
 
 /**
  * Create comprehensive .gitignore file for the project root
@@ -110,65 +112,132 @@ out/
 }
 
 /**
- * Setup Turborepo configuration using create-turbo CLI
+ * Initialize Nx workspace manually without CLI
+ */
+async function initializeNxWorkspace(
+	projectPath: string,
+	answers: ProjectAnswers,
+): Promise<void> {
+	const projectName = path.basename(projectPath);
+
+	// Create nx.json
+	const nxConfig = {
+		$schema: "./node_modules/nx/schemas/nx-schema.json",
+		version: 3,
+		namedInputs: {
+			default: ["{projectRoot}/**/*", "sharedGlobals"],
+			production: [
+				"default",
+				"!{projectRoot}/**/?(*.)+(spec|test).[jt]s?(x)?(.snap)",
+				"!{projectRoot}/tsconfig.spec.json",
+			],
+			sharedGlobals: [],
+		},
+		targetDefaults: {
+			build: {
+				cache: true,
+				dependsOn: ["^build"],
+				inputs: ["production", "^production"],
+			},
+			test: {
+				cache: true,
+				inputs: ["default", "^production", "{workspaceRoot}/jest.preset.js"],
+			},
+			lint: {
+				cache: true,
+				inputs: [
+					"default",
+					"{workspaceRoot}/.eslintrc.json",
+					"{workspaceRoot}/.eslintignore",
+				],
+			},
+		},
+		defaultBase: "main",
+	};
+
+	await fileSystemService.writeJson(
+		path.join(projectPath, "nx.json"),
+		nxConfig,
+	);
+
+	// Create package.json for Nx workspace
+	const packageJson = {
+		name: projectName,
+		version: "0.0.0",
+		license: "MIT",
+		scripts: {
+			build: "nx build",
+			test: "nx test",
+			lint: "nx workspace-lint && nx lint",
+			e2e: "nx e2e",
+		},
+		private: true,
+		devDependencies: {
+			"@nx/workspace": "19.8.4",
+			nx: "19.8.4",
+		},
+	};
+
+	await fileSystemService.writeJson(
+		path.join(projectPath, "package.json"),
+		packageJson,
+	);
+
+	// Create apps and packages directories
+	await fileSystemService.ensureDirectory(path.join(projectPath, "apps"));
+	await fileSystemService.ensureDirectory(path.join(projectPath, "packages"));
+
+	// Create .nxignore
+	const nxIgnore = `node_modules
+dist
+.env
+.env.local
+coverage
+`;
+
+	await fileSystemService.writeFile(
+		path.join(projectPath, ".nxignore"),
+		nxIgnore,
+	);
+}
+
+/**
+ * Setup Turborepo configuration manually
  */
 export async function setupTurboRepo(
 	projectPath: string,
 	answers: ProjectAnswers,
 ): Promise<void> {
-	logger.step("Setting up Turborepo using create-turbo...");
-
 	try {
-		// Use create-turbo CLI to initialize the project
-		const executeCmd = packageManagerService.getExecuteCommand(
-			answers.packageManager,
-		);
-		const execArgs = executeCmd.split(" ");
-		const command = execArgs[0];
-
-		if (!command) {
-			throw new Error(`Invalid execute command for ${answers.packageManager}`);
-		}
-
-		await execa(
-			command,
-			[
-				...execArgs.slice(1),
-				"create-turbo@latest",
-				".",
-				"--skip-transforms",
-				"--example-path=basic",
-			],
-			{
-				cwd: projectPath,
-				stdio: "ignore",
-				env: {
-					...process.env,
-					CI: "true",
-				},
-			},
-		);
-
-		// Clean up generated files we don't need and will create ourselves
-		await fs.remove(path.join(projectPath, "README.md")).catch(() => {});
-		await fs.remove(path.join(projectPath, ".gitignore")).catch(() => {});
-
-		// Remove example apps and packages since we'll create our own
-		await fs.remove(path.join(projectPath, "apps")).catch(() => {});
-		await fs.remove(path.join(projectPath, "packages")).catch(() => {});
-
-		// Create our own apps and packages directories
+		// Create apps and packages directories
 		await fileSystemService.ensureDirectory(path.join(projectPath, "apps"));
 		await fileSystemService.ensureDirectory(path.join(projectPath, "packages"));
 
-		// Recreate the comprehensive .gitignore file for the project root
+		// Create comprehensive .gitignore file
 		await createProjectGitignore(projectPath);
 
-		// Customize turbo.json for our specific needs
+		// Create initial package.json if it doesn't exist
+		const packageJsonPath = path.join(projectPath, "package.json");
+		const initialPackageJson = {
+			name: path.basename(projectPath),
+			version: "0.0.1",
+			private: true,
+			workspaces: ["apps/*", "packages/*"],
+			scripts: {
+				build: "turbo run build",
+				dev: "turbo run dev",
+				lint: "turbo run lint",
+				test: "turbo run test",
+				"type-check": "turbo run type-check",
+			},
+		};
+		await fileSystemService.writeJson(packageJsonPath, initialPackageJson);
+
+		// Create turbo.json configuration
 		const turboConfig = {
 			$schema: "https://turbo.build/schema.json",
-			ui: "tui",
-			tasks: {
+			globalDependencies: [".env"],
+			pipeline: {
 				build: {
 					outputs: [".next/**", "!.next/cache/**", "dist/**"],
 					dependsOn: ["^build"],
@@ -179,6 +248,9 @@ export async function setupTurboRepo(
 				dev: {
 					cache: false,
 					persistent: true,
+				},
+				test: {
+					dependsOn: ["^build"],
 				},
 				"type-check": {
 					dependsOn: ["^type-check"],
@@ -191,7 +263,7 @@ export async function setupTurboRepo(
 			turboConfig,
 		);
 
-		logger.success("Turborepo initialized using create-turbo CLI");
+		logger.success("Turborepo initialized manually");
 	} catch (error) {
 		throw new Error(
 			`Failed to initialize Turborepo: ${error instanceof Error ? error.message : String(error)}`,
@@ -200,7 +272,7 @@ export async function setupTurboRepo(
 }
 
 /**
- * Setup Nx configuration
+ * Setup Nx configuration with proper CLI integration
  */
 export async function setupNx(
 	projectPath: string,
@@ -209,51 +281,27 @@ export async function setupNx(
 	logger.step("Setting up Nx...");
 
 	try {
-		// Initialize Nx workspace using the CLI
-		const executeCmd = packageManagerService.getExecuteCommand(
-			answers.packageManager,
-		);
-		const execArgs = executeCmd.split(" ");
-		const command = execArgs[0];
+		// Initialize Nx workspace using the CLI service
+		await nxCliService.initializeWorkspace(projectPath, answers);
 
-		if (!command) {
-			throw new Error(`Invalid execute command for ${answers.packageManager}`);
-		}
-
-		await execa(
-			command,
-			[
-				...execArgs.slice(1),
-				"create-nx-workspace@latest",
-				"--preset=npm",
-				"--name=workspace",
-				"--skipGit",
-			],
-			{
-				cwd: projectPath,
-				stdio: "ignore",
-			},
-		);
-
-		// Move generated files to root
-		const workspacePath = path.join(projectPath, "workspace");
-		const files = await fs.readdir(workspacePath);
-
-		for (const file of files) {
-			await fs.move(
-				path.join(workspacePath, file),
-				path.join(projectPath, file),
-				{ overwrite: true },
+		// Install required plugins for the selected frameworks
+		const requiredPlugins = nxCliService.getRequiredPlugins(answers);
+		for (const plugin of requiredPlugins) {
+			await nxCliService.installPlugin(
+				projectPath,
+				plugin,
+				answers.packageManager,
 			);
 		}
 
-		// Clean up workspace directory
-		await fs.remove(workspacePath);
+		// Create apps and libs directories based on Nx conventions
+		await fileSystemService.ensureDirectory(path.join(projectPath, "apps"));
+		await fileSystemService.ensureDirectory(path.join(projectPath, "libs"));
 
-		// Recreate the comprehensive .gitignore file for the project root
+		// Create comprehensive .gitignore file for the project root
 		await createProjectGitignore(projectPath);
 
-		logger.success("Nx workspace initialized");
+		logger.success("Nx workspace initialized with CLI");
 	} catch (error) {
 		throw new Error(
 			`Failed to initialize Nx workspace: ${error instanceof Error ? error.message : String(error)}`,
@@ -283,7 +331,7 @@ export async function setupNpmWorkspaces(
 }
 
 /**
- * Setup Nx workspace libraries
+ * Setup Nx workspace libraries using Nx generators
  */
 export async function setupNxWorkspaceLibraries(
 	projectPath: string,
@@ -291,57 +339,116 @@ export async function setupNxWorkspaceLibraries(
 ): Promise<void> {
 	logger.step("Setting up Nx workspace libraries...");
 
-	// Create packages directory
-	const packagesDir = path.join(projectPath, "packages");
-	await fileSystemService.ensureDirectory(packagesDir);
+	try {
+		// Generate shared UI library using Nx generator
+		if (answers.useShadcn) {
+			await nxCliService.runGenerator(
+				projectPath,
+				{
+					generator: "@nx/react:library",
+					name: "ui",
+					options: {
+						directory: "libs/ui",
+						bundler: "vite",
+						unitTestRunner: "jest",
+						"skip-format": true,
+					},
+				},
+				answers.packageManager,
+			);
+		}
+
+		// Generate shared utilities library using Nx generator
+		await nxCliService.runGenerator(
+			projectPath,
+			{
+				generator: "@nx/js:library",
+				name: "utils",
+				options: {
+					directory: "libs/utils",
+					bundler: "vite",
+					unitTestRunner: "jest",
+					"skip-format": true,
+				},
+			},
+			answers.packageManager,
+		);
+
+		logger.success("Nx workspace libraries setup completed");
+	} catch (error) {
+		logger.warn(
+			"Failed to generate some Nx libraries, continuing with manual setup...",
+		);
+
+		// Fallback to manual library creation
+		await setupNxLibrariesManually(projectPath, answers);
+	}
+}
+
+/**
+ * Fallback manual library setup for Nx
+ */
+async function setupNxLibrariesManually(
+	projectPath: string,
+	answers: ProjectAnswers,
+): Promise<void> {
+	// Create libs directory (Nx convention)
+	const libsDir = path.join(projectPath, "libs");
+	await fileSystemService.ensureDirectory(libsDir);
 
 	// Create shared UI package structure
-	const uiPackageDir = path.join(packagesDir, "ui");
-	await fileSystemService.ensureDirectory(uiPackageDir);
+	if (answers.useShadcn) {
+		const uiLibDir = path.join(libsDir, "ui");
+		await fileSystemService.ensureDirectory(uiLibDir);
 
-	const uiPackageJson = {
-		name: "@workspace/ui",
-		version: "0.1.0",
-		main: "./index.ts",
-		types: "./index.ts",
-		exports: {
-			".": "./index.ts",
-		},
-	};
+		const uiPackageJson = {
+			name: "@workspace/ui",
+			version: "0.1.0",
+			main: "./src/index.ts",
+			types: "./src/index.ts",
+			exports: {
+				".": "./src/index.ts",
+			},
+		};
 
-	await fileSystemService.writeJson(
-		path.join(uiPackageDir, "package.json"),
-		uiPackageJson,
-	);
-	await fileSystemService.writeFile(
-		path.join(uiPackageDir, "index.ts"),
-		"// Shared UI components\nexport {};\n",
-	);
+		await fileSystemService.writeJson(
+			path.join(uiLibDir, "package.json"),
+			uiPackageJson,
+		);
+
+		await fileSystemService.ensureDirectory(path.join(uiLibDir, "src"));
+		await fileSystemService.writeFile(
+			path.join(uiLibDir, "src", "index.ts"),
+			"// Shared UI components\nexport {};\n",
+		);
+	}
 
 	// Create shared utils package
-	const utilsPackageDir = path.join(packagesDir, "utils");
-	await fileSystemService.ensureDirectory(utilsPackageDir);
+	const utilsLibDir = path.join(libsDir, "utils");
+	await fileSystemService.ensureDirectory(utilsLibDir);
 
 	const utilsPackageJson = {
 		name: "@workspace/utils",
 		version: "0.1.0",
-		main: "./index.ts",
-		types: "./index.ts",
+		main: "./src/index.ts",
+		types: "./src/index.ts",
 		exports: {
-			".": "./index.ts",
+			".": "./src/index.ts",
 		},
 	};
 
 	await fileSystemService.writeJson(
-		path.join(utilsPackageDir, "package.json"),
+		path.join(utilsLibDir, "package.json"),
 		utilsPackageJson,
 	);
+
+	await fileSystemService.ensureDirectory(path.join(utilsLibDir, "src"));
 	await fileSystemService.writeFile(
-		path.join(utilsPackageDir, "index.ts"),
+		path.join(utilsLibDir, "src", "index.ts"),
 		"// Shared utilities\nexport {};\n",
 	);
 
-	logger.success("Nx workspace libraries setup completed");
+	logger.success("Nx workspace libraries setup completed manually");
 }
 
 /**

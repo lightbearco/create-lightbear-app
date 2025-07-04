@@ -549,17 +549,28 @@ LIVEBLOCKS_SECRET_KEY="sk_dev_..."
 `;
 
 	try {
-		const existingEnv = await fileSystemService.readFile(envExamplePath);
-		await fileSystemService.writeFile(
-			envExamplePath,
-			existingEnv + liveblocksEnv,
-		);
-	} catch {
-		// File doesn't exist, create it
-		await fileSystemService.writeFile(envExamplePath, liveblocksEnv);
-	}
+		// Check if file exists first to avoid ENOENT errors
+		const fileExists = await fileSystemService.fileExists(envExamplePath);
 
-	logger.info("Updated .env.example with Liveblocks configuration");
+		if (fileExists) {
+			// File exists, append to it
+			const existingEnv = await fileSystemService.readFile(envExamplePath);
+			await fileSystemService.writeFile(
+				envExamplePath,
+				existingEnv + liveblocksEnv,
+			);
+		} else {
+			// File doesn't exist, create it
+			await fileSystemService.writeFile(envExamplePath, liveblocksEnv);
+		}
+
+		logger.info("Updated .env.example with Liveblocks configuration");
+	} catch (error) {
+		// Fallback: create the file with just Liveblocks config
+		logger.warn("Could not update existing .env.example, creating new one");
+		await fileSystemService.writeFile(envExamplePath, liveblocksEnv);
+		logger.info("Created .env.example with Liveblocks configuration");
+	}
 }
 
 /**
@@ -575,12 +586,23 @@ NEXT_PUBLIC_ABLY_KEY="your-ably-key"
 `;
 
 	try {
-		const existingEnv = await fileSystemService.readFile(envExamplePath);
-		await fileSystemService.writeFile(envExamplePath, existingEnv + ablyEnv);
-	} catch {
-		// File doesn't exist, create it
-		await fileSystemService.writeFile(envExamplePath, ablyEnv);
-	}
+		// Check if file exists first to avoid ENOENT errors
+		const fileExists = await fileSystemService.fileExists(envExamplePath);
 
-	logger.info("Updated .env.example with Ably configuration");
+		if (fileExists) {
+			// File exists, append to it
+			const existingEnv = await fileSystemService.readFile(envExamplePath);
+			await fileSystemService.writeFile(envExamplePath, existingEnv + ablyEnv);
+		} else {
+			// File doesn't exist, create it
+			await fileSystemService.writeFile(envExamplePath, ablyEnv);
+		}
+
+		logger.info("Updated .env.example with Ably configuration");
+	} catch (error) {
+		// Fallback: create the file with just Ably config
+		logger.warn("Could not update existing .env.example, creating new one");
+		await fileSystemService.writeFile(envExamplePath, ablyEnv);
+		logger.info("Created .env.example with Ably configuration");
+	}
 }

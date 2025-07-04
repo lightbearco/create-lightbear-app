@@ -474,14 +474,25 @@ FIGMA_FILE_KEY="your-figma-file-key"
 `;
 
 	try {
-		const existingEnv = await fileSystemService.readFile(envExamplePath);
-		await fileSystemService.writeFile(envExamplePath, existingEnv + figmaEnv);
-	} catch {
-		// File doesn't exist, create it
-		await fileSystemService.writeFile(envExamplePath, figmaEnv);
-	}
+		// Check if file exists first to avoid ENOENT errors
+		const fileExists = await fileSystemService.fileExists(envExamplePath);
 
-	logger.info("Updated .env.example with Figma configuration");
+		if (fileExists) {
+			// File exists, append to it
+			const existingEnv = await fileSystemService.readFile(envExamplePath);
+			await fileSystemService.writeFile(envExamplePath, existingEnv + figmaEnv);
+		} else {
+			// File doesn't exist, create it
+			await fileSystemService.writeFile(envExamplePath, figmaEnv);
+		}
+
+		logger.info("Updated .env.example with Figma configuration");
+	} catch (error) {
+		// Fallback: create the file with just Figma config
+		logger.warn("Could not update existing .env.example, creating new one");
+		await fileSystemService.writeFile(envExamplePath, figmaEnv);
+		logger.info("Created .env.example with Figma configuration");
+	}
 }
 
 /**

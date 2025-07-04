@@ -20,7 +20,6 @@ export interface PackageManagerStrategy {
 		packages: string[],
 		options?: PackageInstallOptions,
 	): Promise<void>;
-	getCreateAppArgs(projectName: string, template?: string): string[];
 	getInstallCommand(): string[];
 	getExecuteCommand(): string;
 }
@@ -38,12 +37,6 @@ class NpmStrategy implements PackageManagerStrategy {
 		options: PackageInstallOptions = {},
 	): Promise<void> {
 		return this.executeInstall(["install", "-D", ...packages], options);
-	}
-
-	getCreateAppArgs(projectName: string, template?: string): string[] {
-		const args = ["create-next-app@latest", projectName];
-		if (template) args.push("--template", template);
-		return args;
 	}
 
 	getInstallCommand(): string[] {
@@ -84,12 +77,6 @@ class YarnStrategy implements PackageManagerStrategy {
 		return this.executeInstall(["add", "-D", ...packages], options);
 	}
 
-	getCreateAppArgs(projectName: string, template?: string): string[] {
-		const args = ["create", "next-app", projectName];
-		if (template) args.push("--template", template);
-		return args;
-	}
-
 	getInstallCommand(): string[] {
 		return ["install"];
 	}
@@ -126,12 +113,6 @@ class PnpmStrategy implements PackageManagerStrategy {
 		options: PackageInstallOptions = {},
 	): Promise<void> {
 		return this.executeInstall(["add", "-D", ...packages], options);
-	}
-
-	getCreateAppArgs(projectName: string, template?: string): string[] {
-		const args = ["create", "next-app", projectName];
-		if (template) args.push("--template", template);
-		return args;
 	}
 
 	getInstallCommand(): string[] {
@@ -172,12 +153,6 @@ class BunStrategy implements PackageManagerStrategy {
 		return this.executeInstall(["add", "-d", ...packages], options);
 	}
 
-	getCreateAppArgs(projectName: string, template?: string): string[] {
-		const args = ["create", "next-app", projectName];
-		if (template) args.push("--template", template);
-		return args;
-	}
-
 	getInstallCommand(): string[] {
 		return ["install"];
 	}
@@ -192,12 +167,60 @@ class BunStrategy implements PackageManagerStrategy {
 	): Promise<void> {
 		const { cwd = process.cwd(), timeout = 180000 } = options;
 
-		await execa("bun", args, {
-			cwd,
-			stdio: "pipe",
-			timeout,
-			env: { ...process.env, CI: "true", FORCE_COLOR: "0" },
-		});
+		// Use longer timeout for bun as it can be slower than other package managers
+		// Especially with large packages or when resolving complex dependencies
+		const bunTimeout = Math.max(timeout, 300000); // At least 5 minutes, or longer if specified
+
+		// Check for known slow packages that might need even more time
+		const hasSlowPackages = args.some(
+			(arg) =>
+				arg.includes("prisma") ||
+				arg.includes("@prisma") ||
+				arg.includes("playwright") ||
+				arg.includes("@playwright") ||
+				arg.includes("nextjs") ||
+				arg.includes("webpack") ||
+				arg.includes("vite") ||
+				arg.includes("typescript") ||
+				arg.includes("@types"),
+		);
+
+		// Use extra long timeout for known slow packages
+		const actualTimeout = hasSlowPackages
+			? Math.max(bunTimeout, 600000)
+			: bunTimeout; // 10 minutes for slow packages
+
+		try {
+			await execa("bun", args, {
+				cwd,
+				stdio: "pipe",
+				timeout: actualTimeout,
+				env: { ...process.env, CI: "true", FORCE_COLOR: "0" },
+			});
+		} catch (error) {
+			// If bun installation fails with timeout, fallback to npm for reliability
+			if (error instanceof Error && error.message.includes("timed out")) {
+				logger.warn(
+					`Bun timed out installing packages [${args.slice(1).join(", ")}], falling back to npm...`,
+				);
+
+				// Convert bun args to npm args
+				const npmArgs = args.map((arg) => {
+					if (arg === "add") return "install";
+					if (arg === "-d") return "-D";
+					return arg;
+				});
+
+				await execa("npm", npmArgs, {
+					cwd,
+					stdio: "pipe",
+					timeout: actualTimeout,
+					env: { ...process.env, CI: "true", FORCE_COLOR: "0" },
+				});
+			} else {
+				throw error;
+			}
+		}
 	}
 }
 
@@ -239,16 +262,6 @@ export class PackageManagerService {
 
 	getStrategy(packageManager: PackageManager): PackageManagerStrategy {
 		return this.strategies[packageManager];
-	}
-
-	getCreateNextFlags(packageManager: PackageManager): string {
-		const flags: Record<PackageManager, string> = {
-			npm: "--use-npm",
-			yarn: "--use-yarn",
-			pnpm: "--use-pnpm",
-			bun: "--use-bun",
-		};
-		return flags[packageManager];
 	}
 
 	getExecuteCommand(packageManager: PackageManager): string {

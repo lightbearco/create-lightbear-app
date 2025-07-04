@@ -1,5 +1,4 @@
 import path from "path";
-import { execa } from "execa";
 import { FileSystemService } from "../utils/core/file-system.js";
 import { PackageManagerService } from "../utils/core/package-manager.js";
 import { logger } from "../utils/core/logger.js";
@@ -69,10 +68,15 @@ async function setupJest(
 			jestDeps.push("@testing-library/jest-dom");
 		}
 
-		await execa(answers.packageManager, ["add", "-D", ...jestDeps], {
-			cwd: projectPath,
-			stdio: "inherit",
-		});
+		// Add dependencies to package.json
+		await packageManagerService.installPackages(
+			jestDeps,
+			answers.packageManager,
+			{
+				cwd: projectPath,
+				dev: true,
+			},
+		);
 
 		// Create Jest configuration
 		const jestConfig = createJestConfig(answers);
@@ -116,27 +120,15 @@ async function setupPlaywright(
 	logger.step("Configuring Playwright...");
 
 	try {
-		// Install Playwright
-		await execa(answers.packageManager, ["add", "-D", "@playwright/test"], {
-			cwd: projectPath,
-			stdio: "inherit",
-		});
-
-		// Install Playwright browsers
-		const executeCmd = packageManagerService.getExecuteCommand(
+		// Add Playwright as a dev dependency
+		await packageManagerService.installPackages(
+			["@playwright/test"],
 			answers.packageManager,
+			{
+				cwd: projectPath,
+				dev: true,
+			},
 		);
-		const execArgs = executeCmd.split(" ");
-		const command = execArgs[0];
-
-		if (!command) {
-			throw new Error(`Invalid execute command for ${answers.packageManager}`);
-		}
-
-		await execa(command, [...execArgs.slice(1), "playwright", "install"], {
-			cwd: projectPath,
-			stdio: "inherit",
-		});
 
 		// Create Playwright configuration
 		const playwrightConfig = createPlaywrightConfig(answers);
@@ -151,6 +143,11 @@ async function setupPlaywright(
 		await fileSystemService.writeFile(
 			path.join(projectPath, "e2e/example.spec.ts"),
 			exampleE2eTest,
+		);
+
+		// Note: Playwright browsers should be installed separately with: npx playwright install
+		logger.info(
+			"Run 'npx playwright install' after setup to install browser binaries",
 		);
 
 		logger.success("Playwright configuration completed");
@@ -171,17 +168,21 @@ async function setupReactTestingLibrary(
 	logger.step("Configuring React Testing Library...");
 
 	try {
-		// Install React Testing Library
+		// Add React Testing Library dependencies
 		const rtlDeps = [
 			"@testing-library/react",
 			"@testing-library/user-event",
 			"@testing-library/jest-dom",
 		];
 
-		await execa(answers.packageManager, ["add", "-D", ...rtlDeps], {
-			cwd: projectPath,
-			stdio: "inherit",
-		});
+		await packageManagerService.installPackages(
+			rtlDeps,
+			answers.packageManager,
+			{
+				cwd: projectPath,
+				dev: true,
+			},
+		);
 
 		// Create example component test
 		const exampleComponentTest = createExampleComponentTest(answers);

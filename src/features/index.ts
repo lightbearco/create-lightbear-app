@@ -24,6 +24,53 @@ import { setupStorybook } from "./storybook.js";
 import { setupUITools } from "./ui-tools.js";
 import { setupPWA } from "./pwa.js";
 import { setupRealtimeCollaboration } from "./realtime.js";
+import { FileSystemService } from "../utils/core/file-system.js";
+import { logger } from "../utils/core/logger.js";
+import path from "path";
+
+const fileSystemService = new FileSystemService();
+
+/**
+ * Setup API connection configuration for frontend
+ */
+async function setupAPIConnection(
+	projectPath: string,
+	answers: ProjectAnswers,
+): Promise<void> {
+	logger.step("Setting up API connection configuration...");
+
+	const appPath = fileSystemService.resolveAppPath(projectPath);
+	const envExamplePath = path.join(appPath, ".env.example");
+
+	const apiEnv = `# API Configuration
+# Backend API URL for tRPC/REST calls
+NEXT_PUBLIC_API_URL="http://localhost:3001"
+NEXT_PUBLIC_TRPC_URL="http://localhost:3001/api/trpc"
+`;
+
+	try {
+		// Check if file exists first to avoid ENOENT errors
+		const fileExists = await fileSystemService.fileExists(envExamplePath);
+
+		if (fileExists) {
+			// File exists, append to it
+			const existingEnv = await fileSystemService.readFile(envExamplePath);
+			await fileSystemService.writeFile(envExamplePath, existingEnv + apiEnv);
+		} else {
+			// File doesn't exist, create it
+			await fileSystemService.writeFile(envExamplePath, apiEnv);
+		}
+
+		logger.info("Updated .env.example with API connection configuration");
+	} catch (error) {
+		// Fallback: create the file with just API config
+		logger.warn("Could not update existing .env.example, creating new one");
+		await fileSystemService.writeFile(envExamplePath, apiEnv);
+		logger.info("Created .env.example with API connection configuration");
+	}
+
+	logger.success("API connection configuration completed");
+}
 
 /**
  * Feature setup orchestrator with progress tracking
@@ -45,11 +92,12 @@ export async function setupAdditionalFeatures(
 			condition: answers.authentication !== "none",
 			fn: () => setupAuth(projectPath, answers),
 		},
+		// Database setup is now handled only by backend services (Express+tRPC, NestJS, etc.)
+		// This prevents duplicate schema.prisma files in both frontend and backend
 		{
-			name: "🗄️  Setting up database...",
-			condition:
-				answers.ormDatabase !== "none" && answers.databaseProvider !== "none",
-			fn: () => setupDatabase(projectPath, answers),
+			name: "🌐 Setting up API connection...",
+			condition: answers.backendAPI !== "none",
+			fn: () => setupAPIConnection(projectPath, answers),
 		},
 		{
 			name: "💳 Setting up Stripe integration...",
