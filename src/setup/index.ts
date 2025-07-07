@@ -1,49 +1,47 @@
-import path from "path";
-import ora from "ora";
-import chalk from "chalk";
+import path from "node:path";
 import { execa } from "execa";
-import { FrontendSetupService } from "../utils/frontend/index.js";
-import { BackendSetupService } from "../utils/backend/index.js";
-import { BiomeConfigGenerator } from "../utils/config/biome.js";
-import { FileSystemService } from "../utils/core/file-system.js";
-import { logger } from "../utils/core/logger.js";
-import type { ProjectAnswers } from "../utils/types/index.js";
-
-// Import all modular services
+import ora from "ora";
 import {
-	validateBasicRequirements,
-	validatePackageManager,
-	validateDirectoryAvailability,
-} from "../validation/index.js";
-import {
-	getProjectName,
 	getProjectConfiguration,
+	getProjectName,
 	handleDirectoryConflict,
 	promptCleanup,
 } from "../cli/index.js";
 import {
-	displayWelcomeMessage,
-	displaySuccessMessage,
 	displayError,
+	displaySuccessMessage,
+	displayWelcomeMessage,
 } from "../display/index.js";
+import {
+	type FeatureSetupContext,
+	setupAdditionalFeatures,
+} from "../features/index.js";
 import { setupMonorepo } from "../monorepo/index.js";
 import {
-	setupAdditionalFeatures,
-	type FeatureSetupContext,
-} from "../features/index.js";
-import {
-	initializeProject,
-	initializeGitRepository,
-	createInitialCommit,
-	installDependencies,
-	createConfigurationFiles,
-	resolveDirectoryConflict,
 	cleanupProject,
+	createConfigurationFiles,
+	createInitialCommit,
+	initializeGitRepository,
+	initializeProject,
+	installDependencies,
+	resolveDirectoryConflict,
 } from "../project/index.js";
+import { BackendSetupService } from "../utils/backend/index.js";
+import { BiomeConfigGenerator } from "../utils/config/biome.js";
+import { FileSystemService } from "../utils/core/file-system.js";
+import { logger } from "../utils/core/logger.js";
+import { FrontendSetupService } from "../utils/frontend/index.js";
+import type { ProjectAnswers } from "../utils/types/index.js";
+// Import all modular services
+import {
+	validateBasicRequirements,
+	validateDirectoryAvailability,
+	validatePackageManager,
+} from "../validation/index.js";
 
 // Services
 const fileSystemService = new FileSystemService();
-const biomeConfigGenerator = new BiomeConfigGenerator();
+const _biomeConfigGenerator = new BiomeConfigGenerator();
 
 export interface SetupContext {
 	projectPath: string;
@@ -79,7 +77,7 @@ async function setupCodeQuality(
  */
 async function setupBiome(
 	projectPath: string,
-	packageManager: string,
+	_packageManager: string,
 ): Promise<void> {
 	logger.step("Setting up Biome...");
 	const biomeConfig = BiomeConfigGenerator.generateForFramework("nextjs-app");

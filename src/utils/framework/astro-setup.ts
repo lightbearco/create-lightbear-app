@@ -1,17 +1,16 @@
-import { execa } from "execa";
-import path from "path";
-import type {
-	ProjectAnswers,
-	SetupResult,
-	ExecutionContext,
-} from "../types/index.js";
-import { logger } from "../core/logger.js";
-import { FileSystemService } from "../core/file-system.js";
-import { PackageManagerService } from "../core/package-manager.js";
+import path from "node:path";
 import { BiomeConfigGenerator } from "../config/biome.js";
 import { TailwindConfigGenerator } from "../config/tailwind.js";
 import { TRPCConfigGenerator } from "../config/trpc.js";
+import type { FileSystemService } from "../core/file-system.js";
+import { logger } from "../core/logger.js";
+import type { PackageManagerService } from "../core/package-manager.js";
 import { UILibrarySetupService } from "../frontend/ui-library.js";
+import type {
+	ExecutionContext,
+	ProjectAnswers,
+	SetupResult,
+} from "../types/index.js";
 
 export class AstroSetupService {
 	private uiLibraryService: UILibrarySetupService;
@@ -87,7 +86,7 @@ export class AstroSetupService {
 
 	private async setupWithNx(context: ExecutionContext): Promise<SetupResult> {
 		const { projectPath, answers } = context;
-		const warnings: string[] = [];
+		const _warnings: string[] = [];
 
 		logger.warn(
 			"Nx with Astro is not officially supported yet. Setting up standard Astro app...",
@@ -119,7 +118,7 @@ export class AstroSetupService {
 	private async createAstroAppFromTemplate(
 		projectPath: string,
 		answers: ProjectAnswers,
-		template: string,
+		_template: string,
 	): Promise<void> {
 		const appPath = path.join(projectPath, "apps", "web");
 
@@ -488,12 +487,12 @@ storybook-static/
 	): Promise<void> {
 		const astroConfigPath = path.join(appPath, "astro.config.mjs");
 
-		let astroConfig: string;
+		let _astroConfig: string;
 		try {
-			astroConfig = await this.fileSystem.readFile(astroConfigPath);
+			_astroConfig = await this.fileSystem.readFile(astroConfigPath);
 		} catch {
 			// Fallback config if file doesn't exist
-			astroConfig = `import { defineConfig } from 'astro/config';
+			_astroConfig = `import { defineConfig } from 'astro/config';
 
 // https://astro.build/config
 export default defineConfig({});`;

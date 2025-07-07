@@ -1,14 +1,14 @@
+import path from "node:path";
 import { execa } from "execa";
-import path from "path";
+import type { FileSystemService } from "../core/file-system.js";
+import { logger } from "../core/logger.js";
+import { NxCliService } from "../core/nx-cli.js";
+import type { PackageManagerService } from "../core/package-manager.js";
 import type {
+	ExecutionContext,
 	ProjectAnswers,
 	SetupResult,
-	ExecutionContext,
 } from "../types/index.js";
-import { logger } from "../core/logger.js";
-import { FileSystemService } from "../core/file-system.js";
-import { PackageManagerService } from "../core/package-manager.js";
-import { NxCliService } from "../core/nx-cli.js";
 
 export class NestJsSetupService {
 	private nxCliService: NxCliService;
@@ -320,7 +320,7 @@ export class HealthController {
 
 	private async updateAppModule(
 		appPath: string,
-		answers: ProjectAnswers,
+		_answers: ProjectAnswers,
 	): Promise<void> {
 		const appModuleContent = `import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
@@ -349,7 +349,7 @@ export class AppModule {}
 
 	private async updatePackageJson(
 		appPath: string,
-		answers: ProjectAnswers,
+		_answers: ProjectAnswers,
 	): Promise<void> {
 		// Add additional dependencies
 		const additionalDeps = {
@@ -461,7 +461,7 @@ SUPABASE_ANON_KEY="your-anon-key"
 					stdio: "pipe",
 				},
 			);
-		} catch (error) {
+		} catch (_error) {
 			logger.warn("Prisma init failed, creating basic schema");
 		}
 
@@ -767,7 +767,7 @@ export class DatabaseModule {}
 
 	private async setupAuthentication(
 		appPath: string,
-		answers: ProjectAnswers,
+		_answers: ProjectAnswers,
 	): Promise<void> {
 		logger.normal("Setting up authentication with NestJS");
 

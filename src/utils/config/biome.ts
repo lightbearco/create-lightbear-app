@@ -1,7 +1,8 @@
 /** biome-ignore-all lint/complexity/noThisInStatic: <explanation> */
 /** biome-ignore-all lint/complexity/noStaticOnlyClass: <explanation> */
-import type { BiomeConfig, Frontend, PackageManager } from "../types/index.js";
+
 import { PackageManagerService } from "../core/package-manager.js";
+import type { BiomeConfig, Frontend, PackageManager } from "../types/index.js";
 
 export class BiomeConfigGenerator {
 	static generateForFramework(framework: Frontend): BiomeConfig {

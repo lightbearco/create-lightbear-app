@@ -1,8 +1,7 @@
-import path from "path";
-import { execa } from "execa";
+import path from "node:path";
 import { FileSystemService } from "../utils/core/file-system.js";
-import { PackageManagerService } from "../utils/core/package-manager.js";
 import { logger } from "../utils/core/logger.js";
+import { PackageManagerService } from "../utils/core/package-manager.js";
 import type { ProjectAnswers } from "../utils/types/index.js";
 
 const fileSystemService = new FileSystemService();
@@ -356,7 +355,7 @@ async function setupDrizzle(
 		await fileSystemService.ensureDirectory(path.join(appPath, "src/db"));
 
 		// Create provider-specific Drizzle schema and config
-		const isMySQL = answers.databaseProvider === "planetscale";
+		const _isMySQL = answers.databaseProvider === "planetscale";
 
 		// Create Drizzle schema
 		const drizzleSchema = createDrizzleSchema(answers.databaseProvider);

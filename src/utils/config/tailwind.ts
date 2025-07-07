@@ -70,7 +70,7 @@ const config = {
 export default config;`;
 	}
 
-	static generateCSS(framework: Frontend): string {
+	static generateCSS(_framework: Frontend): string {
 		return '@import "tailwindcss";';
 	}
 

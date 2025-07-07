@@ -1,18 +1,17 @@
-import { execa } from "execa";
-import path from "path";
-import type {
-	ProjectAnswers,
-	SetupResult,
-	ExecutionContext,
-} from "../types/index.js";
-import { logger } from "../core/logger.js";
-import { FileSystemService } from "../core/file-system.js";
-import { PackageManagerService } from "../core/package-manager.js";
-import { NxCliService } from "../core/nx-cli.js";
+import path from "node:path";
 import { BiomeConfigGenerator } from "../config/biome.js";
 import { TailwindConfigGenerator } from "../config/tailwind.js";
 import { TRPCConfigGenerator } from "../config/trpc.js";
+import type { FileSystemService } from "../core/file-system.js";
+import { logger } from "../core/logger.js";
+import { NxCliService } from "../core/nx-cli.js";
+import type { PackageManagerService } from "../core/package-manager.js";
 import { UILibrarySetupService } from "../frontend/ui-library.js";
+import type {
+	ExecutionContext,
+	ProjectAnswers,
+	SetupResult,
+} from "../types/index.js";
 
 export class ViteSetupService {
 	private uiLibraryService: UILibrarySetupService;
@@ -160,7 +159,7 @@ export class ViteSetupService {
 	private async createViteAppFromTemplate(
 		projectPath: string,
 		answers: ProjectAnswers,
-		template: string,
+		_template: string,
 	): Promise<void> {
 		const appPath = path.join(projectPath, "apps", "web");
 
@@ -197,7 +196,7 @@ export class ViteSetupService {
 		};
 
 		if (answers.useTypeScript) {
-			(packageJson.devDependencies as Record<string, string>)["typescript"] =
+			(packageJson.devDependencies as Record<string, string>).typescript =
 				"^5.2.2";
 		}
 
@@ -677,7 +676,7 @@ storybook-static/
 
 	private async setupTailwind(
 		appPath: string,
-		answers: ProjectAnswers,
+		_answers: ProjectAnswers,
 	): Promise<void> {
 		logger.art("Setting up Tailwind CSS...");
 

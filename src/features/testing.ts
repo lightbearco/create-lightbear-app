@@ -1,7 +1,7 @@
-import path from "path";
+import path from "node:path";
 import { FileSystemService } from "../utils/core/file-system.js";
-import { PackageManagerService } from "../utils/core/package-manager.js";
 import { logger } from "../utils/core/logger.js";
+import { PackageManagerService } from "../utils/core/package-manager.js";
 import type { ProjectAnswers } from "../utils/types/index.js";
 
 const fileSystemService = new FileSystemService();
@@ -317,7 +317,7 @@ export default defineConfig({
 /**
  * Create example Jest test
  */
-function createExampleJestTest(answers: ProjectAnswers): string {
+function createExampleJestTest(_answers: ProjectAnswers): string {
 	return `// Example Jest test
 describe('Example Test Suite', () => {
   it('should pass a basic test', () => {
@@ -357,7 +357,7 @@ test('navigation works correctly', async ({ page }) => {
 /**
  * Create example React component test
  */
-function createExampleComponentTest(answers: ProjectAnswers): string {
+function createExampleComponentTest(_answers: ProjectAnswers): string {
 	return `import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 

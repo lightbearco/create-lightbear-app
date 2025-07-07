@@ -1,9 +1,9 @@
+import path from "node:path";
 import { execa } from "execa";
-import path from "path";
+import type { PackageManager, ProjectAnswers } from "../types/index.js";
+import { FileSystemService } from "./file-system.js";
 import { logger } from "./logger.js";
 import { PackageManagerService } from "./package-manager.js";
-import { FileSystemService } from "./file-system.js";
-import type { PackageManager, ProjectAnswers } from "../types/index.js";
 
 export interface NxGeneratorOptions {
 	generator: string;
@@ -264,7 +264,7 @@ export class NxCliService {
 	 * Create nx.json configuration
 	 */
 	private async createNxConfig(projectPath: string): Promise<void> {
-		const projectName = path.basename(projectPath);
+		const _projectName = path.basename(projectPath);
 
 		const nxConfig = {
 			$schema: "./node_modules/nx/schemas/nx-schema.json",

@@ -1,4 +1,4 @@
-import path from "path";
+import path from "node:path";
 import { execa } from "execa";
 import { FileSystemService } from "../utils/core/file-system.js";
 import { logger } from "../utils/core/logger.js";
@@ -368,7 +368,7 @@ export const metadata = {
 
 		await fileSystemService.writeFile(layoutPath, layoutContent);
 		logger.success("Added PWA meta tags to layout.tsx");
-	} catch (error) {
+	} catch (_error) {
 		logger.warn(
 			"Could not update layout.tsx automatically. Please add PWA meta tags manually.",
 		);
@@ -403,7 +403,7 @@ export default function Document() {
 	try {
 		await fileSystemService.writeFile(documentPath, documentContent);
 		logger.success("Created _document.tsx with PWA meta tags");
-	} catch (error) {
+	} catch (_error) {
 		logger.warn(
 			"Could not create _document.tsx. PWA meta tags should be added manually.",
 		);
@@ -487,7 +487,7 @@ import { VitePWA } from 'vite-plugin-pwa'`,
 
 		await fileSystemService.writeFile(viteConfigPath, viteConfig);
 		logger.success("Updated vite.config.ts with PWA plugin");
-	} catch (error) {
+	} catch (_error) {
 		logger.warn(
 			"Could not update vite.config.ts automatically. Please add PWA plugin manually.",
 		);

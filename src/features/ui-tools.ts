@@ -1,4 +1,4 @@
-import path from "path";
+import path from "node:path";
 import { execa } from "execa";
 import { FileSystemService } from "../utils/core/file-system.js";
 import { logger } from "../utils/core/logger.js";
@@ -91,7 +91,7 @@ async function setupChromatic(
  */
 async function setupReactDevTools(
 	projectPath: string,
-	answers: ProjectAnswers,
+	_answers: ProjectAnswers,
 ): Promise<void> {
 	logger.step("Setting up React DevTools guide...");
 
@@ -200,7 +200,7 @@ async function setupFigmaIntegration(
  */
 async function createFigmaTokensConfig(
 	appPath: string,
-	answers: ProjectAnswers,
+	_answers: ProjectAnswers,
 ): Promise<void> {
 	const tokensConfig = `module.exports = {
   source: ["src/design-tokens/**/*.json"],
@@ -250,7 +250,7 @@ async function createFigmaTokensConfig(
  */
 async function createFigmaTokensSyncScript(
 	appPath: string,
-	answers: ProjectAnswers,
+	_answers: ProjectAnswers,
 ): Promise<void> {
 	const syncScript = `const { Api } = require("figma-api");
 const fs = require("fs");
@@ -336,7 +336,7 @@ syncDesignTokens();
  */
 async function updateStorybookWithFigmaAddon(
 	appPath: string,
-	answers: ProjectAnswers,
+	_answers: ProjectAnswers,
 ): Promise<void> {
 	const storybookMainPath = path.join(appPath, ".storybook", "main.js");
 
@@ -359,7 +359,7 @@ async function updateStorybookWithFigmaAddon(
 
 			await fileSystemService.writeFile(storybookMainPath, updatedConfig);
 		}
-	} catch (error) {
+	} catch (_error) {
 		logger.warn("Could not update Storybook configuration for Figma addon");
 	}
 }
@@ -369,7 +369,7 @@ async function updateStorybookWithFigmaAddon(
  */
 async function createExampleTokensFile(
 	appPath: string,
-	answers: ProjectAnswers,
+	_answers: ProjectAnswers,
 ): Promise<void> {
 	const exampleTokens = {
 		color: {
@@ -487,7 +487,7 @@ FIGMA_FILE_KEY="your-figma-file-key"
 		}
 
 		logger.info("Updated .env.example with Figma configuration");
-	} catch (error) {
+	} catch (_error) {
 		// Fallback: create the file with just Figma config
 		logger.warn("Could not update existing .env.example, creating new one");
 		await fileSystemService.writeFile(envExamplePath, figmaEnv);
@@ -500,7 +500,7 @@ FIGMA_FILE_KEY="your-figma-file-key"
  */
 async function updatePackageJsonWithChromaticScripts(
 	appPath: string,
-	answers: ProjectAnswers,
+	_answers: ProjectAnswers,
 ): Promise<void> {
 	const packageJsonPath = path.join(appPath, "package.json");
 
@@ -534,7 +534,7 @@ async function updatePackageJsonWithChromaticScripts(
  */
 async function createChromaticConfig(
 	appPath: string,
-	answers: ProjectAnswers,
+	_answers: ProjectAnswers,
 ): Promise<void> {
 	const chromaticConfig = `module.exports = {
   projectToken: process.env.CHROMATIC_PROJECT_TOKEN,

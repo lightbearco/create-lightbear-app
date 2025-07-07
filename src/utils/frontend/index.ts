@@ -1,14 +1,14 @@
-import type {
-	ProjectAnswers,
-	SetupResult,
-	ExecutionContext,
-} from "../types/index.js";
-import { logger } from "../core/logger.js";
 import { FileSystemService } from "../core/file-system.js";
+import { logger } from "../core/logger.js";
 import { PackageManagerService } from "../core/package-manager.js";
+import { AstroSetupService } from "../framework/astro-setup.js";
 import { NextJsSetupService } from "../framework/nextjs-setup.js";
 import { ViteSetupService } from "../framework/vite-setup.js";
-import { AstroSetupService } from "../framework/astro-setup.js";
+import type {
+	ExecutionContext,
+	ProjectAnswers,
+	SetupResult,
+} from "../types/index.js";
 import { UILibrarySetupService } from "./ui-library.js";
 
 export class FrontendSetupService {
@@ -198,21 +198,18 @@ export async function setupAstro(
 	}
 }
 
-// Export services for advanced usage
-export { NextJsSetupService } from "../framework/nextjs-setup.js";
-export { ViteSetupService } from "../framework/vite-setup.js";
-export { AstroSetupService } from "../framework/astro-setup.js";
-export { UILibrarySetupService } from "./ui-library.js";
-
-// Export core services
-export { FileSystemService } from "../core/file-system.js";
-export { PackageManagerService } from "../core/package-manager.js";
-export { logger } from "../core/logger.js";
-
 // Export configuration generators
 export { BiomeConfigGenerator } from "../config/biome.js";
 export { TailwindConfigGenerator } from "../config/tailwind.js";
 export { TRPCConfigGenerator } from "../config/trpc.js";
-
+// Export core services
+export { FileSystemService } from "../core/file-system.js";
+export { logger } from "../core/logger.js";
+export { PackageManagerService } from "../core/package-manager.js";
+export { AstroSetupService } from "../framework/astro-setup.js";
+// Export services for advanced usage
+export { NextJsSetupService } from "../framework/nextjs-setup.js";
+export { ViteSetupService } from "../framework/vite-setup.js";
 // Export types
 export type * from "../types/index.js";
+export { UILibrarySetupService } from "./ui-library.js";
