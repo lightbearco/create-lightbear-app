@@ -1,23 +1,17 @@
 // Main setup orchestrator
-export * from './setup/index.js';
-
-// Core utilities and services
-export * from './utils/index.js';
-
-// Validation utilities
-export * from './validation/index.js';
 
 // CLI interface
-export * from './cli/index.js';
-
+export * from "./cli/index";
 // Display utilities
-export * from './display/index.js';
-
-// Monorepo setup
-export * from './monorepo/index.js';
-
+export * from "./display/index";
 // Feature setup
-export * from './features/index.js';
-
+export * from "./features/index";
+// Monorepo setup
+export * from "./monorepo/index";
 // Project initialization
-export * from './project/index.js'; 
+export * from "./project/index";
+export * from "./setup/index";
+// Core utilities and services
+export * from "./utils/index";
+// Validation utilities
+export * from "./validation/index";

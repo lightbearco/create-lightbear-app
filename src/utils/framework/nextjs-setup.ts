@@ -1,19 +1,18 @@
+import path from "node:path";
 import { execa } from "execa";
-import path from "path";
-import type {
-	ProjectAnswers,
-	SetupResult,
-	ExecutionContext,
-} from "../types/index.js";
-import { logger } from "../core/logger.js";
-import { FileSystemService } from "../core/file-system.js";
-import { PackageManagerService } from "../core/package-manager.js";
-import { NxCliService } from "../core/nx-cli.js";
 import { BiomeConfigGenerator } from "../config/biome.js";
 import { TailwindConfigGenerator } from "../config/tailwind.js";
 import { TRPCConfigGenerator } from "../config/trpc.js";
+import type { FileSystemService } from "../core/file-system.js";
+import { logger } from "../core/logger.js";
+import { NxCliService } from "../core/nx-cli.js";
+import type { PackageManagerService } from "../core/package-manager.js";
 import { UILibrarySetupService } from "../frontend/ui-library.js";
-import inquirer from "inquirer";
+import type {
+	ExecutionContext,
+	ProjectAnswers,
+	SetupResult,
+} from "../types/index.js";
 
 export class NextJsSetupService {
 	private uiLibraryService: UILibrarySetupService;
@@ -269,7 +268,7 @@ coverage/
 
 		// Add turbo-specific dev script for better performance
 		if (answers.monorepoTool === "turbo") {
-			baseScripts["dev"] = "next dev --turbopack";
+			baseScripts.dev = "next dev --turbopack";
 		}
 
 		await this.fileSystem.updatePackageJson(
@@ -447,7 +446,7 @@ coverage/
 
 	private async setupTRPC(
 		appPath: string,
-		isAppRouter: boolean,
+		_isAppRouter: boolean,
 		answers: ProjectAnswers,
 	): Promise<void> {
 		logger.normal("Setting up tRPC");
@@ -758,7 +757,7 @@ body {
 
 	private async createPublicFiles(appPath: string): Promise<void> {
 		// Create a simple favicon.ico placeholder
-		const favicon = `<?xml version="1.0" encoding="UTF-8"?>
+		const _favicon = `<?xml version="1.0" encoding="UTF-8"?>
 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
 	<rect width="16" height="16" fill="#000000"/>
 	<text x="8" y="12" text-anchor="middle" fill="#ffffff" font-size="12" font-family="Arial">N</text>

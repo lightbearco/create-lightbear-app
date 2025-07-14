@@ -1,13 +1,12 @@
-import { execa } from "execa";
-import path from "path";
+import path from "node:path";
+import type { FileSystemService } from "../core/file-system.js";
+import { logger } from "../core/logger.js";
+import type { PackageManagerService } from "../core/package-manager.js";
 import type {
+	ExecutionContext,
 	ProjectAnswers,
 	SetupResult,
-	ExecutionContext,
 } from "../types/index.js";
-import { logger } from "../core/logger.js";
-import { FileSystemService } from "../core/file-system.js";
-import { PackageManagerService } from "../core/package-manager.js";
 
 export class ApolloGraphQLSetupService {
 	constructor(
@@ -83,7 +82,7 @@ export class ApolloGraphQLSetupService {
 
 	private async createBackendStructure(
 		appPath: string,
-		answers: ProjectAnswers,
+		_answers: ProjectAnswers,
 	): Promise<void> {
 		// Create src directory
 		await this.fileSystem.ensureDirectory(path.join(appPath, "src"));

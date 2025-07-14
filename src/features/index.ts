@@ -1,32 +1,30 @@
 // Re-export all feature setup functions
 export { setupAuth } from "./auth.js";
-export { setupStripe } from "./payments.js";
-export { setupDocker } from "./docker.js";
 export { setupGithubActions } from "./cicd.js";
-export { setupHusky, setupCommitlint } from "./git-hooks.js";
 export { setupDatabase } from "./database.js";
-export { setupTesting } from "./testing.js";
-export { setupStorybook } from "./storybook.js";
-export { setupUITools } from "./ui-tools.js";
+export { setupDocker } from "./docker.js";
+export { setupCommitlint, setupHusky } from "./git-hooks.js";
+export { setupStripe } from "./payments.js";
 export { setupPWA } from "./pwa.js";
 export { setupRealtimeCollaboration } from "./realtime.js";
+export { setupStorybook } from "./storybook.js";
+export { setupTesting } from "./testing.js";
+export { setupUITools } from "./ui-tools.js";
 
+import path from "node:path";
+import { FileSystemService } from "../utils/core/file-system.js";
+import { logger } from "../utils/core/logger.js";
 // Import required dependencies for the orchestrator
 import type { ProjectAnswers } from "../utils/types/index.js";
 import { setupAuth } from "./auth.js";
-import { setupDatabase } from "./database.js";
-import { setupStripe } from "./payments.js";
-import { setupDocker } from "./docker.js";
 import { setupGithubActions } from "./cicd.js";
+import { setupDocker } from "./docker.js";
 import { setupHusky } from "./git-hooks.js";
-import { setupTesting } from "./testing.js";
-import { setupStorybook } from "./storybook.js";
-import { setupUITools } from "./ui-tools.js";
+import { setupStripe } from "./payments.js";
 import { setupPWA } from "./pwa.js";
 import { setupRealtimeCollaboration } from "./realtime.js";
-import { FileSystemService } from "../utils/core/file-system.js";
-import { logger } from "../utils/core/logger.js";
-import path from "path";
+import { setupTesting } from "./testing.js";
+import { setupUITools } from "./ui-tools.js";
 
 const fileSystemService = new FileSystemService();
 
@@ -35,7 +33,7 @@ const fileSystemService = new FileSystemService();
  */
 async function setupAPIConnection(
 	projectPath: string,
-	answers: ProjectAnswers,
+	_answers: ProjectAnswers,
 ): Promise<void> {
 	logger.step("Setting up API connection configuration...");
 
@@ -62,7 +60,7 @@ NEXT_PUBLIC_TRPC_URL="http://localhost:3001/api/trpc"
 		}
 
 		logger.info("Updated .env.example with API connection configuration");
-	} catch (error) {
+	} catch (_error) {
 		// Fallback: create the file with just API config
 		logger.warn("Could not update existing .env.example, creating new one");
 		await fileSystemService.writeFile(envExamplePath, apiEnv);

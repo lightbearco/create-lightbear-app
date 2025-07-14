@@ -1,15 +1,15 @@
+import path from "node:path";
 import { execa } from "execa";
-import path from "path";
+import { BiomeConfigGenerator } from "../config/biome.js";
+import type { FileSystemService } from "../core/file-system.js";
+import { logger } from "../core/logger.js";
+import { NxCliService } from "../core/nx-cli.js";
+import type { PackageManagerService } from "../core/package-manager.js";
 import type {
+	ExecutionContext,
 	ProjectAnswers,
 	SetupResult,
-	ExecutionContext,
 } from "../types/index.js";
-import { logger } from "../core/logger.js";
-import { FileSystemService } from "../core/file-system.js";
-import { PackageManagerService } from "../core/package-manager.js";
-import { NxCliService } from "../core/nx-cli.js";
-import { BiomeConfigGenerator } from "../config/biome.js";
 
 export class ExpressTRPCSetupService {
 	private nxCliService: NxCliService;
@@ -164,8 +164,8 @@ export class ExpressTRPCSetupService {
 	}
 
 	private async installDependencies(
-		appPath: string,
-		answers: ProjectAnswers,
+		_appPath: string,
+		_answers: ProjectAnswers,
 	): Promise<void> {
 		logger.normal("Installing backend dependencies");
 
@@ -209,7 +209,7 @@ export class ExpressTRPCSetupService {
 		);
 	}
 
-	private generateServerFile(answers: ProjectAnswers): string {
+	private generateServerFile(_answers: ProjectAnswers): string {
 		return `import express from 'express';
 import cors from 'cors';
 import { createExpressMiddleware } from '@trpc/server/adapters/express';
@@ -255,7 +255,7 @@ export type AppRouter = typeof appRouter;
 
 	private async setupTRPC(
 		appPath: string,
-		answers: ProjectAnswers,
+		_answers: ProjectAnswers,
 	): Promise<void> {
 		logger.normal("Setting up tRPC");
 
@@ -416,7 +416,7 @@ SUPABASE_ANON_KEY="your-anon-key"
 				cwd: appPath,
 				stdio: "pipe",
 			});
-		} catch (error) {
+		} catch (_error) {
 			logger.warn("Biome init failed, continuing with setup");
 		}
 	}
@@ -483,7 +483,7 @@ SUPABASE_ANON_KEY="your-anon-key"
 					stdio: "pipe",
 				},
 			);
-		} catch (error) {
+		} catch (_error) {
 			logger.warn("Prisma init failed, creating basic schema");
 		}
 

@@ -1,4 +1,4 @@
-import path from "path";
+import path from "node:path";
 import { execa } from "execa";
 import { FileSystemService } from "../utils/core/file-system.js";
 import { logger } from "../utils/core/logger.js";
@@ -75,7 +75,7 @@ async function setupClerkAuth(
  */
 async function createClerkConfig(
 	appPath: string,
-	answers: ProjectAnswers,
+	_answers: ProjectAnswers,
 ): Promise<void> {
 	const authConfig = `// Clerk authentication configuration
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
@@ -114,7 +114,7 @@ async function createClerkMiddleware(
 	appPath: string,
 	answers: ProjectAnswers,
 ): Promise<void> {
-	const isAppRouter = answers.frontend === "nextjs-app";
+	const _isAppRouter = answers.frontend === "nextjs-app";
 
 	const middlewareConfig = `import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 
@@ -413,7 +413,7 @@ NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL="/dashboard"
 		}
 
 		logger.info("Updated .env.example with Clerk configuration");
-	} catch (error) {
+	} catch (_error) {
 		// Fallback: create the file with just Clerk config
 		logger.warn("Could not update existing .env.example, creating new one");
 		await fileSystemService.writeFile(envExamplePath, clerkEnv);
@@ -478,7 +478,7 @@ async function createNextAuthConfig(
 	appPath: string,
 	answers: ProjectAnswers,
 ): Promise<void> {
-	const isAppRouter = answers.frontend === "nextjs-app";
+	const _isAppRouter = answers.frontend === "nextjs-app";
 
 	// Create database adapter import if applicable
 	let adapterImport = "";
@@ -583,7 +583,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth(authConfig);
  */
 async function createNextAuthMiddleware(
 	appPath: string,
-	answers: ProjectAnswers,
+	_answers: ProjectAnswers,
 ): Promise<void> {
 	const middlewareConfig = `import { auth } from "./src/lib/auth";
 
@@ -827,7 +827,7 @@ GITHUB_CLIENT_SECRET="your-github-client-secret"
 		}
 
 		logger.info("Updated .env.example with NextAuth.js configuration");
-	} catch (error) {
+	} catch (_error) {
 		// Fallback: create the file with just NextAuth config
 		logger.warn("Could not update existing .env.example, creating new one");
 		await fileSystemService.writeFile(envExamplePath, nextAuthEnv);

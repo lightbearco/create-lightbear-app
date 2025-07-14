@@ -1,14 +1,12 @@
-import path from "path";
-import { execa } from "execa";
-import fs from "fs-extra";
+import path from "node:path";
 import { FileSystemService } from "../utils/core/file-system.js";
-import { PackageManagerService } from "../utils/core/package-manager.js";
-import { NxCliService } from "../utils/core/nx-cli.js";
 import { logger } from "../utils/core/logger.js";
-import type { ProjectAnswers, MonorepoTool } from "../utils/types/index.js";
+import { NxCliService } from "../utils/core/nx-cli.js";
+import { PackageManagerService } from "../utils/core/package-manager.js";
+import type { MonorepoTool, ProjectAnswers } from "../utils/types/index.js";
 
 const fileSystemService = new FileSystemService();
-const packageManagerService = new PackageManagerService();
+const _packageManagerService = new PackageManagerService();
 const nxCliService = new NxCliService();
 
 /**
@@ -114,9 +112,9 @@ out/
 /**
  * Initialize Nx workspace manually without CLI
  */
-async function initializeNxWorkspace(
+async function _initializeNxWorkspace(
 	projectPath: string,
-	answers: ProjectAnswers,
+	_answers: ProjectAnswers,
 ): Promise<void> {
 	const projectName = path.basename(projectPath);
 
@@ -206,7 +204,7 @@ coverage
  */
 export async function setupTurboRepo(
 	projectPath: string,
-	answers: ProjectAnswers,
+	_answers: ProjectAnswers,
 ): Promise<void> {
 	try {
 		// Create apps and packages directories
@@ -314,7 +312,7 @@ export async function setupNx(
  */
 export async function setupNpmWorkspaces(
 	projectPath: string,
-	answers: ProjectAnswers,
+	_answers: ProjectAnswers,
 ): Promise<void> {
 	logger.step("Setting up npm workspaces...");
 
@@ -375,7 +373,7 @@ export async function setupNxWorkspaceLibraries(
 		);
 
 		logger.success("Nx workspace libraries setup completed");
-	} catch (error) {
+	} catch (_error) {
 		logger.warn(
 			"Failed to generate some Nx libraries, continuing with manual setup...",
 		);
@@ -456,7 +454,7 @@ async function setupNxLibrariesManually(
  */
 export async function generateNxWorkspaceConfig(
 	projectPath: string,
-	answers: ProjectAnswers,
+	_answers: ProjectAnswers,
 ): Promise<void> {
 	logger.step("Generating Nx workspace config...");
 
@@ -525,7 +523,6 @@ export function getMonorepoDependencies(tool: MonorepoTool): {
 				dependencies: [],
 				devDependencies: ["nx@latest", "@nx/workspace@latest"],
 			};
-		case "none":
 		default:
 			return {
 				dependencies: [],

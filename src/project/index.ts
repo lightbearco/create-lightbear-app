@@ -1,13 +1,13 @@
-import path from "path";
-import fs from "fs-extra";
+import path from "node:path";
 import { execa } from "execa";
+import fs from "fs-extra";
 import { FileSystemService } from "../utils/core/file-system.js";
-import { PackageManagerService } from "../utils/core/package-manager.js";
 import { logger } from "../utils/core/logger.js";
-import type { ProjectAnswers, PackageManager } from "../utils/types/index.js";
+import { PackageManagerService } from "../utils/core/package-manager.js";
+import type { PackageManager, ProjectAnswers } from "../utils/types/index.js";
 
 const fileSystemService = new FileSystemService();
-const packageManagerService = new PackageManagerService();
+const _packageManagerService = new PackageManagerService();
 
 /**
  * Initialize project directory and validate permissions
@@ -154,7 +154,7 @@ export async function createInitialCommit(projectPath: string): Promise<void> {
 			cwd: projectPath,
 		});
 		logger.success("Initial git commit created");
-	} catch (error) {
+	} catch (_error) {
 		logger.warn(
 			"Failed to create initial git commit. You can commit manually later.",
 		);
@@ -433,7 +433,7 @@ export async function createConfigurationFiles(
  */
 export async function resolveDirectoryConflict(
 	projectPath: string,
-	projectName: string,
+	_projectName: string,
 	conflictAction: "cancel" | "remove" | "continue",
 ): Promise<void> {
 	if (!(await fs.pathExists(projectPath))) {

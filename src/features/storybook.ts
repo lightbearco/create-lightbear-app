@@ -1,8 +1,7 @@
-import path from "path";
-import { execa } from "execa";
+import path from "node:path";
 import { FileSystemService } from "../utils/core/file-system.js";
-import { PackageManagerService } from "../utils/core/package-manager.js";
 import { logger } from "../utils/core/logger.js";
+import { PackageManagerService } from "../utils/core/package-manager.js";
 import type { ProjectAnswers } from "../utils/types/index.js";
 
 const fileSystemService = new FileSystemService();
@@ -196,7 +195,7 @@ export default config;
  */
 async function configureStorybookTailwind(
 	appPath: string,
-	answers: ProjectAnswers,
+	_answers: ProjectAnswers,
 ): Promise<void> {
 	const previewPath = path.join(appPath, ".storybook", "preview.ts");
 
@@ -426,7 +425,7 @@ export const Small: Story = {
  */
 async function updateStorybookConfig(
 	appPath: string,
-	answers: ProjectAnswers,
+	_answers: ProjectAnswers,
 ): Promise<void> {
 	// Create manager.js for custom configuration
 	const managerConfig = `import { addons } from '@storybook/manager-api';
@@ -452,7 +451,7 @@ addons.setConfig({
  */
 async function updatePackageJsonWithStorybookScripts(
 	appPath: string,
-	answers: ProjectAnswers,
+	_answers: ProjectAnswers,
 ): Promise<void> {
 	const packageJsonPath = path.join(appPath, "package.json");
 

@@ -1,6 +1,6 @@
+import boxen from "boxen";
 import chalk from "chalk";
 import gradient from "gradient-string";
-import boxen from "boxen";
 import type { ProjectAnswers } from "../utils/types/index.js";
 
 /**

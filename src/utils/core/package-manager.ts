@@ -1,5 +1,5 @@
 import { execa } from "execa";
-import type { PackageManager, PackageInstallOptions } from "../types/index.js";
+import type { PackageInstallOptions, PackageManager } from "../types/index.js";
 import { logger } from "./logger.js";
 
 export class PackageManagerError extends Error {

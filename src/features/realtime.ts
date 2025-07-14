@@ -1,4 +1,4 @@
-import path from "path";
+import path from "node:path";
 import { execa } from "execa";
 import { FileSystemService } from "../utils/core/file-system.js";
 import { logger } from "../utils/core/logger.js";
@@ -295,7 +295,7 @@ export { ably };
  */
 async function createLiveblocksExamples(
 	appPath: string,
-	answers: ProjectAnswers,
+	_answers: ProjectAnswers,
 ): Promise<void> {
 	// Create example collaborative cursor component
 	const collaborativeCursor = `"use client";
@@ -417,7 +417,7 @@ export function SharedCounter() {
  */
 async function createAblyExamples(
 	appPath: string,
-	answers: ProjectAnswers,
+	_answers: ProjectAnswers,
 ): Promise<void> {
 	// Create example chat component
 	const chatComponent = `"use client";
@@ -565,7 +565,7 @@ LIVEBLOCKS_SECRET_KEY="sk_dev_..."
 		}
 
 		logger.info("Updated .env.example with Liveblocks configuration");
-	} catch (error) {
+	} catch (_error) {
 		// Fallback: create the file with just Liveblocks config
 		logger.warn("Could not update existing .env.example, creating new one");
 		await fileSystemService.writeFile(envExamplePath, liveblocksEnv);
@@ -599,7 +599,7 @@ NEXT_PUBLIC_ABLY_KEY="your-ably-key"
 		}
 
 		logger.info("Updated .env.example with Ably configuration");
-	} catch (error) {
+	} catch (_error) {
 		// Fallback: create the file with just Ably config
 		logger.warn("Could not update existing .env.example, creating new one");
 		await fileSystemService.writeFile(envExamplePath, ablyEnv);

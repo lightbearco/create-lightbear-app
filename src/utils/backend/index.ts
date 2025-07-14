@@ -1,14 +1,14 @@
+import { FileSystemService } from "../core/file-system.js";
+import { logger } from "../core/logger.js";
+import { PackageManagerService } from "../core/package-manager.js";
+import { ApolloGraphQLSetupService } from "../framework/apollo-setup.js";
+import { ExpressTRPCSetupService } from "../framework/express-trpc-setup.js";
+import { NestJsSetupService } from "../framework/nestjs-setup.js";
 import type {
+	ExecutionContext,
 	ProjectAnswers,
 	SetupResult,
-	ExecutionContext,
 } from "../types/index.js";
-import { logger } from "../core/logger.js";
-import { FileSystemService } from "../core/file-system.js";
-import { PackageManagerService } from "../core/package-manager.js";
-import { NestJsSetupService } from "../framework/nestjs-setup.js";
-import { ExpressTRPCSetupService } from "../framework/express-trpc-setup.js";
-import { ApolloGraphQLSetupService } from "../framework/apollo-setup.js";
 
 export class BackendSetupService {
 	private fileSystem: FileSystemService;
@@ -175,7 +175,7 @@ export async function setupApolloGraphQL(
 	}
 }
 
+export { ApolloGraphQLSetupService } from "../framework/apollo-setup.js";
+export { ExpressTRPCSetupService } from "../framework/express-trpc-setup.js";
 // Export services for advanced usage
 export { NestJsSetupService } from "../framework/nestjs-setup.js";
-export { ExpressTRPCSetupService } from "../framework/express-trpc-setup.js";
-export { ApolloGraphQLSetupService } from "../framework/apollo-setup.js";

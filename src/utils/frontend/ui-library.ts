@@ -1,10 +1,8 @@
 import path from "node:path";
-import { execa } from "execa";
-import type { ProjectAnswers, SetupResult } from "../types/index.js";
 import { FileSystemService } from "../core/file-system.js";
-import { PackageManagerService } from "../core/package-manager.js";
 import { logger } from "../core/logger.js";
-import ora from "ora";
+import { PackageManagerService } from "../core/package-manager.js";
+import type { ProjectAnswers, SetupResult } from "../types/index.js";
 
 export class UILibrarySetupService {
 	private fileSystem = new FileSystemService();
@@ -70,8 +68,6 @@ export class UILibrarySetupService {
 		switch (monorepoTool) {
 			case "nx":
 				return path.join(projectPath, "libs", "ui");
-			case "turbo":
-			case "npm":
 			default:
 				return path.join(projectPath, "packages", "ui");
 		}

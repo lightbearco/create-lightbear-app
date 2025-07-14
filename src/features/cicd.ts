@@ -1,4 +1,4 @@
-import path from "path";
+import path from "node:path";
 import { FileSystemService } from "../utils/core/file-system.js";
 import { logger } from "../utils/core/logger.js";
 import type { ProjectAnswers } from "../utils/types/index.js";

@@ -1,8 +1,8 @@
-import path from "path";
+import path from "node:path";
 import { execa } from "execa";
 import { FileSystemService } from "../utils/core/file-system.js";
-import { PackageManagerService } from "../utils/core/package-manager.js";
 import { logger } from "../utils/core/logger.js";
+import { PackageManagerService } from "../utils/core/package-manager.js";
 import type { ProjectAnswers } from "../utils/types/index.js";
 
 const fileSystemService = new FileSystemService();
